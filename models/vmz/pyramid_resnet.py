@@ -4,9 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 
-from models.attentions.attentions import ECA_3D
+from models.vmz.layers import ECA_3D
 from .resnet import Bottleneck
-from models.vmz.utils import model_urls
+
 
 class SelfAttention(nn.Module):
     """

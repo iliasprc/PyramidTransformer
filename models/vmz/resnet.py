@@ -1,7 +1,7 @@
 import torch.nn as nn
 from torchvision.models.utils import load_state_dict_from_url
 
-from models.attentions.attentions import ECA_3D
+from models.vmz.layers import ECA_3D
 from models.vmz.layers import *
 
 

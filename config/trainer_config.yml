@@ -12,7 +12,7 @@ trainer:
   pretrained_cpkt: /home/papastrat/PycharmProjects/SLR_challenge/checkpoints/model_IR_CSN_152/dataset_Autsl/date_25_02_2021_09.24.20/best_model.pth
   log_interval: 1000 # print statistics every log_interval
   model:
-    name: Pyramid_Transformer # model name
+    name: IR_CSN_152 # model name
     optimizer: # optimizer configuration
       type: SGD # optimizer type
       lr: 1e-2 # learning rate

@@ -86,6 +86,7 @@ def main():
 
     log.info(f"{model}")
     log.info(f'{len(classes)}')
+    exit()
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
