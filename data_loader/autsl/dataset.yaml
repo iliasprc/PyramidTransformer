@@ -1,0 +1,19 @@
+dataset:
+  name: AUTSL
+  modality: RGB
+  images_path: challenge/
+  classes: 226
+  normalize: True
+  padding : False
+  dim: [224,224]
+  dim2: [112,112]
+  img_type: jpg
+  train:
+    seq_length: 64
+    augmentation: True
+  val:
+    seq_length: 64
+    augmentation: False
+  validation:
+    seq_length: 64
+    augmentation: False

@@ -1,0 +1,58 @@
+trainer:
+  input_data: /home/papastrat/Desktop/ilias/datasets/ # path of input data
+  cwd: /home/papastrat/PycharmProjects/SLR_challenge # working directory
+  logger: SLR_challenge # logger name
+  epochs: 10 # number of training epochs
+  seed: 1234 # randomness seed
+  cuda: True # use nvidia gpu
+  gpu: 0 # id of gpu
+  save: True # save checkpoint
+  load: False # load pretrained checkpoint
+  gradient_accumulation: 16 # gradient accumulation steps
+  rgb_cpkt: model.pth
+  depth_cpkt: model.pth
+  pretrained_cpkt: /home/papastrat/PycharmProjects/SLR_challenge/checkpoints/model_IR_CSN_152/dataset_Autsl/date_25_02_2021_09.24.20/best_model.pth
+  log_interval: 1000 # print statistics every log_interval
+  model:
+    name: RGBD_Transformer # model name
+    optimizer: # optimizer configuration
+      type: SGD # optimizer type
+      lr: 1e-2 # learning rate
+      weight_decay: 0.000001 # weight decay
+    scheduler: # learning rate scheduler
+      type: ReduceLRonPlateau # type of scheduler
+      scheduler_factor: 0.5 # learning rate change ratio
+      scheduler_patience: 0 # patience for some epochs
+      scheduler_min_lr: 1e-3 # minimum learning rate value
+      scheduler_verbose: 5e-6 # print if learning rate is changed
+  dataloader:
+    train:
+      batch_size: 4 # batch size
+      shuffle: True # shuffle samples after every epoch
+      num_workers: 2 # number of thread for dataloader
+    validation:
+      batch_size: 4
+      shuffle: False
+      num_workers: 2
+    test:
+      batch_size: 1
+      shuffle: False
+      num_workers: 2
+  dataset:
+    input_data: /home/papastrat/Desktop/ilias/datasets/
+    name: AUTSL # dataset name
+    modality: RGB # type of modality
+    images_path: challenge/ # data directory
+    classes: 226 # number of classes
+    normalize: True # mean, std normalization
+    padding : True # pad videos
+    dim: [224,224] # frame dimension
+    train:
+      seq_length: 64 # number of frames for each video
+      augmentation: True # do augmentation to video
+    val:
+      seq_length: 64
+      augmentation: False
+    validation:
+      seq_length: 64
+      augmentation: False

@@ -1,0 +1,11 @@
+model:
+  mode: isolated
+  temporal_resolution: 64
+  window: 50
+  stride: 25
+  rnn:
+    type: lstm
+    hidden_size: 512
+    num_layers: 2
+    bidirectional: True
+    dropout: 0.5
