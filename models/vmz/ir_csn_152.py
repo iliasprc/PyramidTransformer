@@ -68,21 +68,24 @@ class VideoResNet(nn.Module):
                 if isinstance(m, Bottleneck):
                     nn.init.constant_(m.bn3.weight, 0)
 
-    def forward(self, x, target=None):
+    def forward(self, x, y=None):
         with torch.no_grad():
             x = self.stem(x)
 
-            x = self.layer1(x)
-            x = self.layer2(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
 
         x = self.avgpool(x)
         # Flatten the layer to fc
         x = x.flatten(1)
-        x = self.fc(x)
+        y_hat = self.fc(x)
+        if y==None:
+            return y_hat
 
-        return x
+        loss = F.cross_entropy(y_hat, y.squeeze(-1))
+        return y_hat, loss
 
     def training_step(self, train_batch):
         x, y = train_batch
@@ -135,7 +138,7 @@ class VideoResNet(nn.Module):
         if self.fc.bias is not None:
             nn.init.constant_(self.fc.bias, 0)
 
-def ir_csn_152(pretraining="ig65m_32frms", pretrained=False, progress=False, num_classes=226, **kwargs):
+def ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=False, progress=False, num_classes=226, **kwargs):
     avail_pretrainings = [
         "ig65m_32frms",
         "ig_ft_kinetics_32frms",
@@ -164,12 +167,12 @@ def ir_csn_152(pretraining="ig65m_32frms", pretrained=False, progress=False, num
             m.eps = 1e-3
             m.momentum = 0.9
     #
-    if pretrained:
-        model.replace_logits(n_classes=359)
-        state_dict = torch.hub.load_state_dict_from_url(
-            model_urls[arch], progress=progress
-        )
-        model.load_state_dict(state_dict, strict=False)
-        model.replace_logits(n_classes=226)
+
+    model.replace_logits(n_classes=400)
+    state_dict = torch.hub.load_state_dict_from_url(
+        model_urls[arch], progress=progress
+    )
+    model.load_state_dict(state_dict, strict=True)
+    model.replace_logits(n_classes=226)
 
     return model

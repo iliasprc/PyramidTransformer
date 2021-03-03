@@ -50,7 +50,7 @@ def main():
 
     writer = SummaryWriter(writer_path)
     shutil.copy(os.path.join(config.cwd, config_file), cpkt_fol_name)
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
+    #os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
     log.info(f'pyTorch VERSION:{torch.__version__}', )
     log.info(f'CUDA VERSION')
 
@@ -86,7 +86,7 @@ def main():
 
     log.info(f"{model}")
     log.info(f'{len(classes)}')
-    exit()
+
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")

@@ -8,7 +8,7 @@ trainer:
   gpu: 0 # id of gpu
   save: True # save checkpoint
   load: False # load pretrained checkpoint
-  gradient_accumulation: 16 # gradient accumulation steps
+  gradient_accumulation: 32 # gradient accumulation steps
   pretrained_cpkt: /home/papastrat/PycharmProjects/SLR_challenge/checkpoints/model_IR_CSN_152/dataset_Autsl/date_25_02_2021_09.24.20/best_model.pth
   log_interval: 1000 # print statistics every log_interval
   model:
@@ -25,7 +25,7 @@ trainer:
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
-      batch_size: 4 # batch size
+      batch_size: 2 # batch size
       shuffle: True # shuffle samples after every epoch
       num_workers: 2 # number of thread for dataloader
     validation:
@@ -39,7 +39,7 @@ trainer:
   dataset:
     input_data: /home/papastrat/Desktop/ilias/datasets/
     name: AUTSL # dataset name
-    modality: RGB # type of modality
+    modality: depth # type of modality
     images_path: challenge/ # data directory
     classes: 226 # number of classes
     normalize: True # mean, std normalization

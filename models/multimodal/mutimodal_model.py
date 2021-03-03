@@ -147,7 +147,7 @@ class TransformerResNet(nn.Module):
                     nn.init.constant_(m.bias, 0)
 
 
-def ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=False, progress=False, num_classes=226, **kwargs):
+def ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=False, progress=False, num_classes=226, **kwargs):
     avail_pretrainings = [
         "ig65m_32frms",
         "ig_ft_kinetics_32frms",
@@ -168,7 +168,7 @@ def ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=False, progres
             pretrained = False
     use_pool1 = True
     model = TransformerResNet(block=Bottleneck, conv_makers=[Conv3DDepthwise] * 4, layers=[3, 8, 36, 3],
-                              stem=BasicStem_Pool if use_pool1 else BasicStem, num_classes=num_classes, **kwargs)
+                              stem=BasicStem_Pool , num_classes=num_classes, **kwargs)
 
     # We need exact Caffe2 momentum for BatchNorm scaling
     for m in model.modules():
@@ -176,13 +176,13 @@ def ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=False, progres
             m.eps = 1e-3
             m.momentum = 0.9
 
-    if pretrained:
-        model.fc = nn.Linear(2048, 359)
-        state_dict = torch.hub.load_state_dict_from_url(
-            model_urls[arch], progress=progress
-        )
-        model.load_state_dict(state_dict, strict=False)
-        model.fc = nn.Linear(3072, 226)
+
+    model.fc = nn.Linear(2048, 400)
+    state_dict = torch.hub.load_state_dict_from_url(
+        model_urls[arch], progress=progress
+    )
+    model.load_state_dict(state_dict, strict=False)
+    model.fc = nn.Linear(3072, 226)
 
     return model
 
@@ -197,9 +197,9 @@ class RGBD_Transformer(BaseModel):
         """
         super().__init__()
         config = OmegaConf.load(os.path.join(config.cwd, 'models/multimodal/model.yml'))['model']
-        self.rgb_encoder = ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=True, progress=False,
+        self.rgb_encoder = ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                                                   num_classes=N_classes)
-        self.depth_encoder = ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=True, progress=False,
+        self.depth_encoder = ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                                                     num_classes=N_classes)
         self.eca = ECA_3D(k_size=11)
         self.classifier = nn.Linear(6144, N_classes)

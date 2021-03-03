@@ -184,8 +184,7 @@ class TrainerRGBD(BaseTrainer):
             self.mnt_best = metric
 
             self.logger.info(f"Best val loss {self.mnt_best} so far ")
-        with open(os.path.join(self.checkpoint_dir, 'training_arguments.txt'), 'w') as f:
-            json.dump(self.args.__dict__, f, indent=2)
+
         save_checkpoint_slr(self.model, self.optimizer, epoch, self.valid_metrics.avg('loss'),
                             self.checkpoint_dir, '_model',
                             save_seperate_layers=True, is_best=is_best)

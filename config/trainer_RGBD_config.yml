@@ -5,10 +5,10 @@ trainer:
   epochs: 10 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
-  gpu: 0 # id of gpu
+  gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: False # load pretrained checkpoint
-  gradient_accumulation: 16 # gradient accumulation steps
+  gradient_accumulation: 32 # gradient accumulation steps
   rgb_cpkt: model.pth
   depth_cpkt: model.pth
   pretrained_cpkt: /home/papastrat/PycharmProjects/SLR_challenge/checkpoints/model_IR_CSN_152/dataset_Autsl/date_25_02_2021_09.24.20/best_model.pth
