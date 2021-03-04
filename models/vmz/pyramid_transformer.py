@@ -81,7 +81,7 @@ class PyramidTransformerResNet(nn.Module):
                 if isinstance(m, Bottleneck):
                     nn.init.constant_(m.bn3.weight, 0)
 
-    def forward(self, x, target=None):
+    def forward(self, x, y=None):
         with torch.no_grad():
             x = self.stem(x)
 
@@ -90,12 +90,12 @@ class PyramidTransformerResNet(nn.Module):
             # tpn1 = self.tpn1(x)
             # print(f' tpn1 {tpn1.shape}')
             # with torch.no_grad():
-            x = self.layer2(x)
+        x = self.layer2(x)
         # tpn2 = self.tpn2(x)  # + tpn1
         # print(f'layer 2 {x.shape}{ tpn2.shape}')
 
-        with torch.no_grad():
-            x = self.layer3(x)
+        #with torch.no_grad():
+        x = self.layer3(x)
         tpn3 = self.tpn3(x)  # + tpn2
         # print(f'layer 3 {x.shape} {tpn3.shape}')
         # with torch.no_grad():
@@ -105,9 +105,12 @@ class PyramidTransformerResNet(nn.Module):
 
         x_new = torch.cat((tpn3, tpn4), dim=-1)
 
-        x = self.fc(x_new)
+        y_hat = self.fc(x_new)
+        if y==None:
+            return y_hat
+        loss = F.cross_entropy(y_hat, y.squeeze(-1))
+        return y_hat, loss
 
-        return x
 
     def training_step(self, train_batch):
         x, y = train_batch
@@ -192,11 +195,11 @@ def ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=False, progres
             m.momentum = 0.9
 
     if pretrained:
-        model.fc = nn.Linear(2048, 359)
+        model.fc = nn.Linear(2048, 400)
         state_dict = torch.hub.load_state_dict_from_url(
             model_urls[arch], progress=progress
         )
         model.load_state_dict(state_dict, strict=False)
-        model.fc = nn.Linear(2048, 226)
+        model.fc = nn.Linear(3072, 226)
 
     return model

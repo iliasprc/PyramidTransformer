@@ -72,7 +72,7 @@ class Trainer(BaseTrainer):
 
             target = target.long().to(self.device)
 
-            output, loss = self.model.training_step((data, target))
+            output, loss = self.model(data, target)
             loss = loss.mean()
 
             (loss / gradient_accumulation).backward()
@@ -114,7 +114,7 @@ class Trainer(BaseTrainer):
 
                 target = target.long().to(self.device)
 
-                output, loss = self.model.validation_step((data, target))
+                output, loss = self.model(data, target)
                 loss = loss.mean()
                 writer_step = (epoch - 1) * len(loader) + batch_idx
 
@@ -145,9 +145,9 @@ class Trainer(BaseTrainer):
             check_dir(self.checkpoint_dir)
             self.checkpointer(epoch, validation_loss)
             self.lr_scheduler.step(validation_loss)
-            if self.do_test:
-                self.logger.info("!" * 10, "   TESTING   ", "!" * 10)
-                self.predict(epoch)
+            # if self.do_test:
+            #     self.logger.info("!" * 10, "   TESTING   ", "!" * 10)
+            #     self.predict(epoch)
 
     def predict(self, epoch):
         """

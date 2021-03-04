@@ -3,7 +3,7 @@ import os
 import torch.utils.data as data
 
 from data_loader.autsl.autsl_loader import AUTSL
-from data_loader.autsl.autsl_loaderv2 import AUTSLv2
+#from data_loader.autsl.autsl_loaderv2 import AUTSLv2
 from data_loader.autsl.rgbd_loader import AUTSL_RGBD
 from data_loader.loader_utils import read_autsl_csv
 from utils.util import load_config

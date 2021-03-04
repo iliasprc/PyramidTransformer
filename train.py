@@ -50,7 +50,7 @@ def main():
 
     writer = SummaryWriter(writer_path)
     shutil.copy(os.path.join(config.cwd, config_file), cpkt_fol_name)
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
+    #os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
     log.info(f'pyTorch VERSION:{torch.__version__}', )
     log.info(f'CUDA VERSION')
 
@@ -74,27 +74,28 @@ def main():
 
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device: {device}')
+    #
+    # if (config.load):
+    #     model.fc = torch.nn.Linear(2048, 226)
+    #     # model.model.classifier = torch.nn.Linear(3840, 226)
+    #     pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
+    #     resume_epoch = 0
+    #     model.fc = torch.nn.Linear(2048, 226)
+    #     # model.fc = torch.nn.Linear(2048, 226)
+    #     # torch.nn.init.xavier_uniform(model.fc.weight)
 
-    if (config.load):
-        model.fc = torch.nn.Linear(2048, 226)
-        # model.model.classifier = torch.nn.Linear(3840, 226)
-        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-        resume_epoch = 0
-        model.fc = torch.nn.Linear(2048, 226)
-        # model.fc = torch.nn.Linear(2048, 226)
-        # torch.nn.init.xavier_uniform(model.fc.weight)
-
-    log.info(f"{model}")
+    #log.info(f"{model}")
     log.info(f'{len(classes)}')
-    exit()
+
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
 
             model = torch.nn.DataParallel(model)
-        model.to(device)
+    model.to(device)
+    pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
 
-    optimizer, scheduler = select_optimizer(model, config['model'], checkpoint=None)
+    optimizer, scheduler = select_optimizer(model, config['model'],pth_file)
 
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     trainer = Trainer(config, model=model, optimizer=optimizer,

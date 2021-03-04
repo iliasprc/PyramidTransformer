@@ -42,7 +42,7 @@ class AUTSL(Base_dataset):
 
         train_paths, train_labels, _ = read_autsl_labelsv2(
             './data_loader/autsl/train_labels.csv')
-        val_paths, val_labels, _ = read_autsl_labelsv2('./data_loader/autsl/valid_lias_labels.csv')
+        val_paths, val_labels, _ = read_autsl_labelsv2('./data_loader/autsl/ground_truth_validation.csv')
         if mode == 'train':
             self.list_IDs = train_paths
             self.labels = train_labels

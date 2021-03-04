@@ -96,17 +96,17 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     model_dict = model.state_dict()
     print(pretrained_dict.keys() )
     print(model_dict.keys())
-    # # 1. filter out unnecessary keys
-    # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
-    pretrained_dictnew = {}
-    for k, v in pretrained_dict.items():
-        if ' model' in k:
-            k = k[6:]
-        pretrained_dictnew[k] = v
-    # # for k, v in pretrained_dict.items():
-    # #     k = k.strip('model.')
-    # #     pretrained_dictnew[k] = v
-    print(pretrained_dictnew.keys())
+    # # # 1. filter out unnecessary keys
+    # # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+    # pretrained_dictnew = {}
+    # for k, v in pretrained_dict.items():
+    #     if ' model' in k:
+    #         k = k[6:]
+    #     pretrained_dictnew[k] = v
+    # # # for k, v in pretrained_dict.items():
+    # # #     k = k.strip('model.')
+    # # #     pretrained_dictnew[k] = v
+    #print(pretrained_dictnew.keys())
     # #pretrained_dict = {k: v for k, v in pretrained_dictnew.items() if k in model_dict}
     #
     # # # 2. overwrite entries in the existing state dict
@@ -120,14 +120,14 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
 
     if (not load_seperate_layers):
 
-        model.load_state_dict(pretrained_dictnew , strict=strict)
+        model.load_state_dict(checkpoint1['model_dict'] , strict=strict)
 
 
     epoch = 0
     if optimizer != None:
         optimizer.load_state_dict(checkpoint['optimizer_dict'])
 
-    return checkpoint, epoch
+    return checkpoint1, epoch
 
 
 def load_checkpoint_modules(checkpoint, model, strict=True, optimizer=None, load_seperate_layers=False):
@@ -232,8 +232,13 @@ def select_optimizer(model, config, checkpoint=None):
     elif (opt == 'RMSprop'):
         print(" use RMS  lr", lr)
         optimizer = optim.RMSprop(model.parameters(), lr=float(config['optimizer']['lr']))
-    if (checkpoint):
+    if (checkpoint!=None):
+        #print('load opt cpkt')
         optimizer.load_state_dict(checkpoint['optimizer_dict'])
+        for g in optimizer.param_groups:
+            g['lr'] = 0.005
+        print(optimizer.state_dict()['state'].keys())
+
     if config['scheduler']['type'] == 'ReduceLRonPlateau':
         scheduler = ReduceLROnPlateau(optimizer, factor=config['scheduler']['scheduler_factor'],
                                       patience=config['scheduler']['scheduler_patience'],
