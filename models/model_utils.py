@@ -40,12 +40,12 @@ def SLR_video_encoder(config,N_classes):
 
 
     if config.model.name == 'IR_CSN_152':
-        return ir_csn_152(pretraining="ig65m_32frms", pretrained=True, progress=False, num_classes=N_classes)
+        return ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
     elif config.model.name == 'ECA_IR_CSN_152':
-        return eca_ir_csn_152(pretraining="ig65m_32frms", pretrained=True, progress=False, num_classes=N_classes)
+        return eca_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
 
     elif config.model.name == 'Pyramid_Transformer':
-        return ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=True, progress=False, num_classes=N_classes)
+        return ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
 
 
 def RGBD_model(config, N_classes):
