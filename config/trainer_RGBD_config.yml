@@ -28,7 +28,7 @@ trainer:
       batch_size: 4 # batch size
       shuffle: True # shuffle samples after every epoch
       num_workers: 4 # number of thread for dataloader
-    validation:
+    val:
       batch_size: 4
       shuffle: False
       num_workers: 4
@@ -51,6 +51,6 @@ trainer:
     val:
       seq_length: 64
       augmentation: False
-    validation:
+    test:
       seq_length: 64
       augmentation: False

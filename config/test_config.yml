@@ -1,34 +1,32 @@
 tester:
-  input_data: /home/papastrat/Desktop/ilias/datasets/ # path of input data
-  cwd: /home/papastrat/PycharmProjects/PyramidTransformer # working directory
+  cwd: /home/iliask/PycharmProjects/PyramidTransformer # working directory
   logger: SLR_challenge # logger name
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
   gpu: 0 # id of gpu
   save: True # save checkpoint
-  load: False # load pretrained checkpoint
-  pretrained_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/model_IR_CSN_152/dataset_AUTSL/date_02_03_2021_20.35.10/best_model_epoch_4.pth
+  load: True # load pretrained checkpoint
+  pretrained_cpkt: /home/iliask/PycharmProjects/PyramidTransformer/checkpoints/model_Pyramid_Transformer/dataset_AUTSL/date_03_03_2021_10.24.19/best_model_epoch_7.pth
   log_interval: 1000 # print statistics every log_interval
   model:
-    name: IR_CSN_152 # model name
+    name: Pyramid_Transformer # model name
   dataloader:
     train:
       batch_size: 4 # batch size
       shuffle: True # shuffle samples after every epoch
       num_workers: 4 # number of thread for dataloader
-    validation:
-      batch_size: 4
+    val:
+      batch_size: 1
       shuffle: False
-      num_workers: 4
+      num_workers: 2
     test:
       batch_size: 1
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets/
+    input_data: /home/iliask/Desktop/ilias/datasets/ # data directory
     name: AUTSL # dataset name
     modality: RGB # type of modality
-    images_path: challenge/ # data directory
     classes: 226 # number of classes
     normalize: True # mean, std normalization
     padding : True # pad videos
@@ -39,6 +37,6 @@ tester:
     val:
       seq_length: 64
       augmentation: False
-    validation:
+    test:
       seq_length: 64
       augmentation: False

@@ -25,7 +25,7 @@ from trainer.tester import Tester
 from utils import getopts, arguments
 from utils.logger import Logger
 
-config_file = 'config/trainer_config.yml'
+config_file = 'config/test_config.yml'
 
 
 def main():
@@ -33,7 +33,7 @@ def main():
 
     cwd = os.getcwd()
     args = arguments()
-    config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
+    config = OmegaConf.load(os.path.join(cwd, config_file))['tester']
     myargs = getopts(sys.argv)
     if len(myargs) > 0:
         for key, v in myargs.items():
@@ -43,12 +43,14 @@ def main():
 
     dt_string = now.strftime("%d_%m_%Y_%H.%M.%S")
     cpkt_fol_name = os.path.join(config.cwd,
-                                 'checkpoints/model_' + config.model.name + '/dataset_' + config.dataset.name + '/date_' + dt_string)
+                                 'checkpoints/model_' + config.model.name + '/dataset_' + config.dataset.name +
+                                 '/date_' + dt_string)
 
     log = Logger(path=cpkt_fol_name, name=config.logger).get_logger()
 
     writer_path = os.path.join(config.cwd,
-                               'runs/model_' + config.model.name + '/dataset_' + config.dataset.name + '/date_' + dt_string)
+                               'runs/model_' + config.model.name + '/dataset_' + config.dataset.name + '/date_' +
+                               dt_string)
 
     writer = SummaryWriter(writer_path)
     shutil.copy(os.path.join(config.cwd, config_file), cpkt_fol_name)
@@ -77,28 +79,25 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device: {device}')
 
-    if (config.load):
-        model.fc = torch.nn.Linear(2048, 226)
-        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-        model.fc = torch.nn.Linear(2048, 226)
-
-
-    log.info(f"{model}")
+    #log.info(f"{model}")
     log.info(f'{len(classes)}')
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
 
-            model = torch.nn.DataParallel(model)
+        model = torch.nn.DataParallel(model)
         model.to(device)
 
+    if (config.load):
+
+        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
 
 
     tester = Tester(config, model=model,
                     data_loader=training_generator, writer=writer, logger=log,
                     valid_data_loader=val_generator, test_data_loader=test_generator,
                     checkpoint_dir=cpkt_fol_name)
-
+    validation_loss = tester._valid_epoch(0, 'validation', val_generator)
     tester.predict()
 
 

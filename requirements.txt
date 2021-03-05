@@ -46,11 +46,10 @@ six==1.15.0
 tensorboard==2.4.1
 tensorboard-plugin-wit==1.7.0
 tifffile==2020.9.3
-torch==1.7.1
+torch==1.6.0
 torchsummary==1.5.1
-torchvision==0.8.2
+torchvision==0.7.0
 typing-extensions==3.7.4.3
 urllib3==1.26.2
-videoaugment @ git+https://github.com/iliasprc/videoaugment@c2a15b36f4fb22683e865405f204c7c4a4fc5ecc
 Werkzeug==1.0.1
 zipp==3.4.0

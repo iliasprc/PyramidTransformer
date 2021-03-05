@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.vmz.layers import BasicStem, BasicStem_Pool, SpatialModulation, Conv3DDepthwise, Bottleneck
+from models.vmz.layers import BasicStem, BasicStem_Pool, SpatialModulation, Conv3DDepthwise, Bottleneck,ECA_3D
 model_urls = {
     "r2plus1d_34_8_ig65m": "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch-9bae36ae.pth",
     # noqa: E501
@@ -71,6 +71,7 @@ class PyramidTransformerResNet(nn.Module):
         self.tpn4 = SpatialModulation(512 * block.expansion, downsample_scale=8, k=1, s=1, d=1)
 
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.eca = ECA_3D(k_size=9)
         self.fc = nn.Linear((512 + 256) * 4, 226)
 
         # init weights
