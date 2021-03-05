@@ -1,21 +1,21 @@
 trainer:
   input_data: /home/papastrat/Desktop/ilias/datasets/ # path of input data
-  cwd: /home/papastrat/PycharmProjects/SLR_challenge # working directory
+  cwd: /home/papastrat/PycharmProjects/PyramidTransformer # working directory
   logger: SLR_challenge # logger name
   epochs: 30 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
-  gpu: 0 # id of gpu
+  gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: False # load pretrained checkpoint
   gradient_accumulation: 8 # gradient accumulation steps
-  pretrained_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/model_IR_CSN_152/dataset_AUTSL/date_02_03_2021_20.35.10/best_model_epoch_4.pth
+  pretrained_cpkt: best_model.pth
   log_interval: 1000 # print statistics every log_interval
   model:
     name: IR_CSN_152 # model name
     optimizer: # optimizer configuration
       type: SGD # optimizer type
-      lr: 0.5e-2 # learning rate
+      lr: 1e-2 # learning rate
       weight_decay: 0.000001 # weight decay
     scheduler: # learning rate scheduler
       type: ReduceLRonPlateau # type of scheduler

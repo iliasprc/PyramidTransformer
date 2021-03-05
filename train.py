@@ -23,21 +23,24 @@ from models.model_utils import SLR_video_encoder
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer import Trainer
 from utils.logger import Logger
+from utils.util import arguments,getopts
+import sys
 
 config_file = 'config/trainer_config.yml'
 
 
 def main():
     now = datetime.datetime.now()
-    # args = arguments()
-    # args_dict = args.__dict__
-    # conf = OmegaConf.create(args_dict)
-    # print(conf)
+
     cwd = os.getcwd()
     config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
-    # config1 = OmegaConf.merge(config, conf)
-    # exit
+
     config.cwd = cwd
+    myargs = getopts(sys.argv)
+    if len(myargs) > 0:
+        for key, v in myargs.items():
+            if key in config.keys():
+                config[key] = v
 
     dt_string = now.strftime("%d_%m_%Y_%H.%M.%S")
     cpkt_fol_name = os.path.join(config.cwd,
@@ -50,15 +53,16 @@ def main():
 
     writer = SummaryWriter(writer_path)
     shutil.copy(os.path.join(config.cwd, config_file), cpkt_fol_name)
-    #os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
+
+    log.info("date and time =", dt_string)
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
     log.info(f'pyTorch VERSION:{torch.__version__}', )
     log.info(f'CUDA VERSION')
 
     log.info(f'CUDNN VERSION:{torch.backends.cudnn.version()}')
     log.info(f'Number CUDA Devices: {torch.cuda.device_count()}')
-    # dd/mm/YY H:M:S
 
-    # log.info("date and time =", dt_string)
+
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
     random.seed(config.seed)
@@ -74,15 +78,8 @@ def main():
 
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device: {device}')
-    #
-    # if (config.load):
-    #     model.fc = torch.nn.Linear(2048, 226)
-    #     # model.model.classifier = torch.nn.Linear(3840, 226)
-    #     pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-    #     resume_epoch = 0
-    #     model.fc = torch.nn.Linear(2048, 226)
-    #     # model.fc = torch.nn.Linear(2048, 226)
-    #     # torch.nn.init.xavier_uniform(model.fc.weight)
+
+
 
     #log.info(f"{model}")
     log.info(f'{len(classes)}')
@@ -92,8 +89,19 @@ def main():
             print("Let's use", torch.cuda.device_count(), "GPUs!")
 
             model = torch.nn.DataParallel(model)
+
+    if (config.load):
+        model.fc = torch.nn.Linear(2048, 226)
+        # model.model.classifier = torch.nn.Linear(3840, 226)
+        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
+        resume_epoch = 0
+        model.fc = torch.nn.Linear(2048, 226)
+        # model.fc = torch.nn.Linear(2048, 226)
+        # torch.nn.init.xavier_uniform(model.fc.weight)
+    else:
+        pth_file = None
     model.to(device)
-    pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
+
 
     optimizer, scheduler = select_optimizer(model, config['model'],pth_file)
 

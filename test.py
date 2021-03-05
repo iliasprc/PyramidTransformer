@@ -5,11 +5,11 @@ Created on Wed Feb 13 10:49:41 2019
 @author: papastrat
 
 """
-import argparse
 import datetime
 import os
 import random
 import shutil
+import sys
 
 # import configargparse
 import numpy as np
@@ -22,6 +22,7 @@ from data_loader.dataset import data_generators
 from models.model_utils import SLR_video_encoder
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.tester import Tester
+from utils import getopts, arguments
 from utils.logger import Logger
 
 config_file = 'config/trainer_config.yml'
@@ -31,8 +32,13 @@ def main():
     now = datetime.datetime.now()
 
     cwd = os.getcwd()
+    args = arguments()
     config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
-
+    myargs = getopts(sys.argv)
+    if len(myargs) > 0:
+        for key, v in myargs.items():
+            if key in config.keys():
+                config[key] = v
     config.cwd = cwd
 
     dt_string = now.strftime("%d_%m_%Y_%H.%M.%S")
@@ -73,12 +79,9 @@ def main():
 
     if (config.load):
         model.fc = torch.nn.Linear(2048, 226)
-        # model.model.classifier = torch.nn.Linear(3840, 226)
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-        resume_epoch = 0
         model.fc = torch.nn.Linear(2048, 226)
-        # model.fc = torch.nn.Linear(2048, 226)
-        # torch.nn.init.xavier_uniform(model.fc.weight)
+
 
     log.info(f"{model}")
     log.info(f'{len(classes)}')
@@ -89,15 +92,14 @@ def main():
             model = torch.nn.DataParallel(model)
         model.to(device)
 
-    optimizer, scheduler = select_optimizer(model, config['model'], checkpoint=None)
 
-    trainer = Tester(config, model=model, optimizer=optimizer,
-                      data_loader=training_generator, writer=writer, logger=log,
-                      valid_data_loader=val_generator, test_data_loader=test_generator,
-                      lr_scheduler=scheduler,
-                      checkpoint_dir=cpkt_fol_name)
 
-    trainer.predict(0)
+    tester = Tester(config, model=model,
+                    data_loader=training_generator, writer=writer, logger=log,
+                    valid_data_loader=val_generator, test_data_loader=test_generator,
+                    checkpoint_dir=cpkt_fol_name)
+
+    tester.predict()
 
 
 if __name__ == '__main__':

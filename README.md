@@ -8,16 +8,14 @@
 	* [Folder Structure](#folder-structure)
 	* [Usage](#usage)
 		* [Config file format](#config-file-format)
-		* [Using config files](#using-config-files)
+		* [Training](#training)
 		* [Resuming from checkpoints](#resuming-from-checkpoints)
-    * [Using Multiple GPU](#using-multiple-gpu)
-	* [Customization](#customization)
-		* [Additional logging](#additional-logging)
+        * [Using Multiple GPU](#using-multiple-gpu)
+		* [Testing](#testing)
 		* [Validation data](#validation-data)
 		* [Checkpoints](#checkpoints)
-    * [Tensorboard Visualization](#tensorboard-visualization)
-	* [Contribution](#contribution)
-	* [TODOs](#todos)
+	* [Pretrained Models](#pretrained-models)
+
 	* [License](#license)
 	* [Acknowledgements](#acknowledgements)
 
@@ -33,22 +31,15 @@ pip install -r requirements.txt
 * PyTorch >= 1.4 (1.6.0 recommended)
 * torchvision >=0.6.0  
 * tqdm (Optional for `test.py`)
-* tensorboard >= 1.14 (see [Tensorboard Visualization](#tensorboard-visualization))
+* tensorboard >= 1.14 
 * scikit-video
 * av
 ## Features
-* Clear folder structure which is suitable for many deep learning projects.
-* `.json` config file support for convenient parameter tuning.
-* Customizable command line options for more convenient parameter tuning.
-* Checkpoint saving and resuming.
-* Abstract base classes for faster development:
-  * `BaseTrainer` handles checkpoint saving/resuming, training process logging, and more.
-  * `BaseDataLoader` handles batch generation, data shuffling, and validation data splitting.
-  * `BaseModel` provides basic model summary.
+
 
 ## Folder Structure
   ```
-  pytorch-template/
+  PyramidTransformer/
   │
   ├── base/ - abstract base classes
   │   ├── base_data_loader.py
@@ -57,13 +48,11 @@ pip install -r requirements.txt
   ├── checkpoints/
   │   ├── models/ - trained models are saved here
   │   └── log/ - default logdir for tensorboard and logging output
-
   │
   ├── config - holds configuration for training
   │   ├── trainer_config.yml
-  │   ├── 
+  │   ├── trainer_RGBD_config.yml
   │   └── 
-  │
   │
   ├── data_loader/ - anything about data loading goes here
   │   └── loader_utils.py - functions to load and preprocess data
@@ -75,7 +64,7 @@ pip install -r requirements.txt
   │   ├── model_utils.py - model functions, optimizer and weight initializations
   │
   │
-  ├── trainer/ - trainers
+  ├── trainer/ - training and testing functions
   │   └── trainer.py
   │
   ├── logger/ - module for tensorboard visualization and logging
@@ -94,26 +83,26 @@ pip install -r requirements.txt
 
 ## Usage
 The code in this repo is an MNIST example of the template.
-Try `python train.py -c config.json` to run code.
+Try `python train.py -c config.yml` to run code.
 
 ### Config file format
-Config files are in `.yaml` format:
+Config files are in `.yml` format. These are the default training options
 ```yaml
-trainer:
+ttrainer:
   input_data: /home/papastrat/Desktop/ilias/datasets/ # path of input data
-  cwd: /home/papastrat/PycharmProjects/SLR_challenge # working directory
+  cwd: /home/papastrat/PycharmProjects/PyramidTransformer # working directory
   logger: SLR_challenge # logger name
-  epochs: 10 # number of training epochs
+  epochs: 30 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
-  gpu: 0 # id of gpu
+  gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: False # load pretrained checkpoint
   gradient_accumulation: 16 # gradient accumulation steps
-  pretrained_cpkt: /home/papastrat/PycharmProjects/SLR_challenge/checkpoints/model_IR_CSN_152/dataset_Autsl/date_25_02_2021_09.24.20/best_model.pth
+  pretrained_cpkt: best_model.pth
   log_interval: 1000 # print statistics every log_interval
   model:
-    name: Pyramid_Transformer # model name
+    name: IR_CSN_152 # model name
     optimizer: # optimizer configuration
       type: SGD # optimizer type
       lr: 1e-2 # learning rate
@@ -128,11 +117,11 @@ trainer:
     train:
       batch_size: 4 # batch size
       shuffle: True # shuffle samples after every epoch
-      num_workers: 2 # number of thread for dataloader
+      num_workers: 4 # number of thread for dataloader
     validation:
       batch_size: 4
       shuffle: False
-      num_workers: 2
+      num_workers: 4
     test:
       batch_size: 1
       shuffle: False
@@ -157,10 +146,9 @@ trainer:
       augmentation: False
 ```
 
-Add addional configurations if you need.
 
-### Using config files
-Modify the configurations in `.json` config files, then run:
+### Training
+To train the network simplt run:
 
   ```
   python train.py 
@@ -170,27 +158,28 @@ Modify the configurations in `.json` config files, then run:
 You can resume from a previously saved checkpoint by:
 
   ```
-  python train.py --resume path/to/checkpoint
+  python train.py --load --cpkt path/to/checkpoint
   ```
 
 ### Using Multiple GPU
-You can enable multi-GPU training by setting `n_gpu` argument of the config file to larger number.
+You can enable multi-GPU training by setting `gpu` argument of the config file to larger number.
 If configured to use smaller number of gpu than available, first n devices will be used by default.
 Specify indices of available GPUs by cuda environmental variable.
   ```
-  python train.py --device 2,3 -c config.json
+  python train.py --gpu 0,1 -c config.yml
   ```
   This is equivalent to
   ```
-  CUDA_VISIBLE_DEVICES=2,3 python train.py -c config.py
+  CUDA_VISIBLE_DEVICES=0,1 python train.py -c config.yml
   ```
-
-## Customization
-
 
 
 ### Testing
 You can test trained model by running `test.py` passing path to the trained checkpoint by `--resume` argument.
+
+```
+python test.py  -c config.yml -cpkt path/to/checkpoint
+```
 
 ### Validation data
 To split validation data from a data loader, call `BaseDataLoader.split_validation()`, then it will return a data loader for validation of size specified in your config file.
@@ -200,48 +189,7 @@ The `validation_split` can be a ratio of validation set per total data(0.0 <= fl
 **Note**: `split_validation()` will return `None` if `"validation_split"` is set to `0`
 
 
-### Tensorboard Visualization
-This template supports Tensorboard visualization by using either  `torch.utils.tensorboard` or [TensorboardX](https://github.com/lanpa/tensorboardX).
 
-1. **Install**
-
-    If you are using pytorch 1.1 or higher, install tensorboard by 'pip install tensorboard>=1.14.0'.
-
-    Otherwise, you should install tensorboardx. Follow installation guide in [TensorboardX](https://github.com/lanpa/tensorboardX).
-
-2. **Run training** 
-
-    Make sure that `tensorboard` option in the config file is turned on.
-
-    ```
-     "tensorboard" : true
-    ```
-
-3. **Open Tensorboard server** 
-
-    Type `tensorboard --logdir saved/log/` at the project root, then server will open at `http://localhost:6006`
-
-By default, values of loss and metrics specified in config file, input images, and histogram of model parameters will be logged.
-If you need more visualizations, use `add_scalar('tag', data)`, `add_image('tag', image)`, etc in the `trainer._train_epoch` method.
-`add_something()` methods in this template are basically wrappers for those of `tensorboardX.SummaryWriter` and `torch.utils.tensorboard.SummaryWriter` modules. 
-
-**Note**: You don't have to specify current steps, since `WriterTensorboard` class defined at `logger/visualization.py` will track current steps.
-
-## Contribution
-Feel free to contribute any kind of function or enhancement, here the coding style follows PEP8
-
-Code should pass the [Flake8](http://flake8.pycqa.org/en/latest/) check before committing.
-
-## TODOs
-
-- [ ] Multiple optimizers
-- [ ] Support more tensorboard functions
-- [x] Using fixed random seed
-- [x] Support pytorch native tensorboard
-- [x] `tensorboardX` logger support
-- [x] Configurable logging layout, checkpoint naming
-- [x] Iteration-based training (instead of epoch-based)
-- [x] Adding command line option for fine-tuning
 
 ## License
 This project is licensed under the MIT License. See  LICENSE for more details

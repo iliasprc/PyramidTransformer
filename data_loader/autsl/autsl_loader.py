@@ -49,13 +49,13 @@ class AUTSL(Base_dataset):
         elif mode == 'val':
             self.list_IDs = val_paths
             self.labels = val_labels
-        elif mode == 'validation':
+        elif mode == 'test':
             self.labels = []
             self.list_IDs = natural_sort(
-                glob.glob(os.path.join(self.config.dataset.input_data, f'challenge/val/*{self.modal}.mp4')))
+                glob.glob(os.path.join(self.config.dataset.input_data, f'challenge/test/*{self.modal}.mp4')))
 
             for path in self.list_IDs:
-                label = path.replace(self.config.dataset.input_data, '').replace('challenge/val/', '').replace(
+                label = path.replace(self.config.dataset.input_data, '').replace('challenge/test/', '').replace(
                     f'_{self.modal}.mp4',
                     '')
                 self.labels.append(label)

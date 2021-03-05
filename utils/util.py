@@ -9,8 +9,34 @@ from pathlib import Path
 import pandas as pd
 import torch
 import yaml
-
+import argparse
 logging.captureWarnings(True)
+
+
+
+
+def arguments():
+    parser = argparse.ArgumentParser(description='SLR challenge')
+
+    parser.add_argument('--c', type=float, default=0.01, metavar='config',
+                        help='config file path')
+
+    parser.add_argument('--gpu', type=str, default='0,1')
+    parser.add_argument('--load', type=bool, default=False)
+    parser.add_argument('--cpkt', type=str,
+                        default='',
+                        help='checkpoint')
+    args = parser.parse_args()
+
+    return args
+
+def getopts(argv):
+    opts = {}  # Empty dictionary to store key-value pairs.
+    while argv:  # While there are arguments left to parse...
+        if argv[0][0] == '-':  # Found a "-name value" pair.
+            opts[argv[0].strip('--').strip('-')] = argv[1]  # Add key and value to the dictionary.
+        argv = argv[1:]  # Reduce the argument list by copying it starting from index 1.
+    return opts
 
 
 def read_json(fname):
