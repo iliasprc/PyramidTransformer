@@ -1,5 +1,4 @@
 trainer:
-  input_data: /home/papastrat/Desktop/ilias/datasets/ # path of input data
   cwd: /home/papastrat/PycharmProjects/PyramidTransformer # working directory
   logger: SLR_challenge # logger name
   epochs: 30 # number of training epochs
@@ -8,7 +7,7 @@ trainer:
   gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: False # load pretrained checkpoint
-  gradient_accumulation: 8 # gradient accumulation steps
+  gradient_accumulation: 16 # gradient accumulation steps
   pretrained_cpkt: best_model.pth
   log_interval: 1000 # print statistics every log_interval
   model:
@@ -39,7 +38,7 @@ trainer:
   dataset:
     input_data: /home/papastrat/Desktop/ilias/datasets/
     name: AUTSL # dataset name
-    modality: RGB # type of modality
+    modality: depth # type of modality
     images_path: challenge/ # data directory
     classes: 226 # number of classes
     normalize: True # mean, std normalization
