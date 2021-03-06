@@ -1,3 +1,4 @@
+import argparse
 import csv
 import json
 import logging
@@ -9,18 +10,28 @@ from pathlib import Path
 import pandas as pd
 import torch
 import yaml
-import argparse
+
 logging.captureWarnings(True)
 
+test_model_configs = {
+    'Pyramid_Transformer': {'RGB': 'config/RGB/Pyramid_Transformer/test_config.yml',
+                            'Depth': 'config/RGB/Pyramid_Transformer/test_config.yml'}
 
+}
+train_model_configs = {
+    'Pyramid_Transformer': {'RGB': 'config/RGB/Pyramid_Transformer/trainer_config.yml',
+                            'Depth': 'config/RGB/Pyramid_Transformer/trainer_config.yml'}
+
+}
 
 
 def arguments():
     parser = argparse.ArgumentParser(description='SLR challenge')
 
-    parser.add_argument('--c', type=float, default=0.01, metavar='config',
+    parser.add_argument('--c', type=str, default='config', metavar='config',
                         help='config file path')
-
+    parser.add_argument('--modality', type=str, default='RGB', choices=['RGB', 'Depth', 'RGBD'])
+    parser.add_argument('--model', type=str, default='Pyramid_Transformer')
     parser.add_argument('--gpu', type=str, default='0,1')
     parser.add_argument('--load', type=bool, default=False)
     parser.add_argument('--cpkt', type=str,
@@ -29,6 +40,7 @@ def arguments():
     args = parser.parse_args()
 
     return args
+
 
 def getopts(argv):
     opts = {}  # Empty dictionary to store key-value pairs.

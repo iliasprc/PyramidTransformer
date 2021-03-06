@@ -22,7 +22,7 @@ from data_loader.dataset import data_generators
 from models.model_utils import SLR_video_encoder
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.tester import Tester
-from utils import getopts, arguments
+from utils import getopts, arguments,test_model_configs
 from utils.logger import Logger
 
 config_file = 'config/test_config.yml'
@@ -33,6 +33,7 @@ def main():
 
     cwd = os.getcwd()
     args = arguments()
+
     config = OmegaConf.load(os.path.join(cwd, config_file))['tester']
     myargs = getopts(sys.argv)
     if len(myargs) > 0:

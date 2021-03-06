@@ -100,7 +100,7 @@ class Tester(BaseTrainer):
 
         predictions = []
         with torch.no_grad():
-            for batch_idx, (data, target) in enumerate(self.valid_data_loader):
+            for batch_idx, (data, target) in enumerate(self.test_data_loader):
                 data = data.to(self.device)
 
                 logits = self.model(data, None)

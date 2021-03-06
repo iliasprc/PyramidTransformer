@@ -9,7 +9,8 @@ trainer:
   save: True # save checkpoint
   load: False # load pretrained checkpoint
   gradient_accumulation: 8 # gradient accumulation steps
-  pretrained_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/model_IR_CSN_152/dataset_AUTSL/date_02_03_2021_20.35.10/best_model_epoch_4.pth
+  rgb_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/model_IR_CSN_152/dataset_AUTSL/date_02_03_2021_20.35.10/best_model_epoch_4.pth
+  depth_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/model_IR_CSN_152/dataset_AUTSL/date_02_03_2021_20.35.10/best_model_epoch_4.pth
   log_interval: 1000 # print statistics every log_interval
   model:
     name: IR_CSN_152 # model name

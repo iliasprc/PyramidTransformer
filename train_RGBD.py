@@ -23,7 +23,7 @@ from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer_rgbd import TrainerRGBD
 from utils.logger import Logger
 
-config_file = 'config/trainer_RGBD_config.yml'
+config_file = 'config/RGBD/trainer_RGBD_config.yml'
 
 
 def main():

@@ -24,9 +24,9 @@ tester:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/iliask/Desktop/ilias/datasets/challenge # data directory
+    input_data: /home/iliask/Desktop/ilias/datasets/ # data directory
     name: AUTSL # dataset name
-    modality: RGB # type of modality
+    modality: depth # type of modality
     classes: 226 # number of classes
     normalize: True # mean, std normalization
     padding : True # pad videos

@@ -38,7 +38,7 @@ class AUTSL(Base_dataset):
             self.modal = 'color'
         else:
             self.modal = 'depth'
-        self.list_rgb = sorted(glob.glob(os.path.join(config.cwd, f'challenge/train/*{self.modal}.mp4')))
+        self.list_rgb = sorted(glob.glob(os.path.join(config.cwd, f'train/*{self.modal}.mp4')))
 
         train_paths, train_labels, _ = read_autsl_labelsv2(
             './data_loader/autsl/train_labels.csv')
@@ -52,10 +52,10 @@ class AUTSL(Base_dataset):
         elif mode == 'test':
             self.labels = []
             self.list_IDs = natural_sort(
-                glob.glob(os.path.join(self.config.dataset.input_data, f'challenge/test/*{self.modal}.mp4')))
+                glob.glob(os.path.join(self.config.dataset.input_data, f'test/*{self.modal}.mp4')))
 
             for path in self.list_IDs:
-                label = path.replace(self.config.dataset.input_data, '').replace('challenge/test/', '').replace(
+                label = path.replace(self.config.dataset.input_data, '').replace('test/', '').replace(
                     f'_{self.modal}.mp4',
                     '')
                 self.labels.append(label)
@@ -71,17 +71,17 @@ class AUTSL(Base_dataset):
             aug = 'train'
 
             vid_name = f'{self.list_IDs[index]}_{self.modal}.mp4'
-            vid_tensor = load_video(os.path.join(self.config.dataset.input_data, 'challenge/train', vid_name),
+            vid_tensor = load_video(os.path.join(self.config.dataset.input_data, 'train', vid_name),
                                     dim=self.dim,
                                     time_steps=self.seq_length, augmentation=aug)
         elif self.mode == 'val':
             aug = 'test'
             vid_name = f'{self.list_IDs[index]}_{self.modal}.mp4'
-            vid_tensor = load_video(os.path.join(self.config.dataset.input_data, 'challenge/val', vid_name),
+            vid_tensor = load_video(os.path.join(self.config.dataset.input_data, 'val', vid_name),
                                     dim=self.dim,
                                     time_steps=self.seq_length, augmentation=aug)
 
-        elif self.mode == 'validation':
+        elif self.mode == 'test':
             aug = 'test'
             vid_name = f'{self.list_IDs[index]}_{self.modal}.mp4'
             vid_tensor = load_video(self.list_IDs[index], dim=self.dim,

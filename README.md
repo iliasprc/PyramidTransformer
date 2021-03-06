@@ -21,11 +21,23 @@
 
 <!-- /code_chunk_output -->
 
+
+## TODOs
+
+- [ ] Final Requirements
+- [ ] Pretrained models
+- [ ] Test all pretrained models
+- [ ] Instructions for training 
+- [ ] Adding command line option for inference
+
 ## Requirements
 
 ```python
 pip install -r requirements.txt
 ```
+
+
+
 
 * Python >= 3.5 (3.6 recommended)
 * PyTorch >= 1.4 (1.6.0 recommended)
@@ -195,4 +207,3 @@ The `validation_split` can be a ratio of validation set per total data(0.0 <= fl
 This project is licensed under the MIT License. See  LICENSE for more details
 
 ## Acknowledgements
-This project is inspired by the project [Tensorflow-Project-Template](https://github.com/MrGemy95/Tensorflow-Project-Template) by [Mahmoud Gemy](https://github.com/MrGemy95)
