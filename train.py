@@ -30,20 +30,13 @@ config_file = 'config/trainer_config.yml'
 
 
 def main():
-    args = arguments()
-    myargs = getopts(sys.argv)
     now = datetime.datetime.now()
+
     cwd = os.getcwd()
-    if len(myargs) > 0:
-        if 'c' in myargs:
-            config_file = myargs['c']
-    else:
-        config_file = 'config/trainer_config.yml'
-    #print(config_file)
     config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
 
     config.cwd = cwd
-
+    myargs = getopts(sys.argv)
     if len(myargs) > 0:
         for key, v in myargs.items():
             if key in config.keys():
@@ -61,7 +54,7 @@ def main():
     writer = SummaryWriter(writer_path)
     shutil.copy(os.path.join(config.cwd, config_file), cpkt_fol_name)
 
-    log.info(f"date and time = {dt_string}")
+    log.info("date and time =", dt_string)
     os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
     log.info(f'pyTorch VERSION:{torch.__version__}', )
     log.info(f'CUDA VERSION')
@@ -107,12 +100,9 @@ def main():
         # torch.nn.init.xavier_uniform(model.fc.weight)
     else:
         pth_file = None
-    mode
-    l.to(device)
+    model.to(device)
 
-    #
-    from models.model_utils import freeze_bn
-    #freeze_bn(model)
+
     optimizer, scheduler = select_optimizer(model, config['model'],pth_file)
 
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")

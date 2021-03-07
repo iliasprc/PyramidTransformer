@@ -70,7 +70,7 @@ class TransformerResNet(nn.Module):
 
         self.tpn4 = SpatialModulation(512 * block.expansion, downsample_scale=8, k=1, s=1, d=1)
 
-        self.eca = ECA_3D(k_size=11)
+        self.eca = ECA_3D(k_size=9)
 
         # init weights
         self._initialize_weights()

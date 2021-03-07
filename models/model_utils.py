@@ -98,15 +98,15 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     print(model_dict.keys())
     # # # 1. filter out unnecessary keys
     # # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
-    pretrained_dictnew = {}
-    for k, v in pretrained_dict.items():
-        if 'module.' in k:
-            k = k[7:]
-        pretrained_dictnew[k] = v
+    # pretrained_dictnew = {}
+    # for k, v in pretrained_dict.items():
+    #     if ' model' in k:
+    #         k = k[6:]
+    #     pretrained_dictnew[k] = v
     # # # for k, v in pretrained_dict.items():
     # # #     k = k.strip('model.')
     # # #     pretrained_dictnew[k] = v
-    print(pretrained_dictnew.keys())
+    #print(pretrained_dictnew.keys())
     # #pretrained_dict = {k: v for k, v in pretrained_dictnew.items() if k in model_dict}
     #
     # # # 2. overwrite entries in the existing state dict
@@ -120,8 +120,8 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
 
     if (not load_seperate_layers):
 
-        #model.load_state_dict(checkpoint1['model_dict'] , strict=strict)p
-        model.load_state_dict(pretrained_dictnew, strict=strict)
+        model.load_state_dict(checkpoint1['model_dict'] , strict=strict)
+
 
     epoch = 0
     if optimizer != None:
@@ -210,16 +210,6 @@ def init_weights_rnn(model):
                     param.data.fill_(0)
     return model
 
-
-
-def freeze_bn(model):
-    for module in model.modules():
-        if isinstance(module, torch.nn.modules.BatchNorm1d):
-            module.eval()
-        if isinstance(module, torch.nn.modules.BatchNorm2d):
-            module.eval()
-        if isinstance(module, torch.nn.modules.BatchNorm3d):
-            module.eval()
 
 def weights_init_uniform(net):
     for name, param in net.named_parameters():

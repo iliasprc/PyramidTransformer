@@ -22,30 +22,18 @@ from models.model_utils import RGBD_model
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer_rgbd import TrainerRGBD
 from utils.logger import Logger
-from utils.util import arguments,getopts
-import sys
 
 config_file = 'config/RGBD/trainer_RGBD_config.yml'
 
 
 def main():
-    args = arguments()
-    myargs = getopts(sys.argv)
     now = datetime.datetime.now()
 
     cwd = os.getcwd()
-
-    if len(myargs) > 0:
-        if 'c' in myargs:
-            config_file = myargs['c']
-    else:
-        config_file = 'config/RGBD/trainer_RGBD_config.yml'
-
     config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
-    if len(myargs) > 0:
-        for key, v in myargs.items():
-            if key in config.keys():
-                config[key] = v
+
+    # config1 = OmegaConf.merge(config, conf)
+    # exit
     config.cwd = cwd
 
     dt_string = now.strftime("%d_%m_%Y_%H.%M.%S")
@@ -85,14 +73,14 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device {device}')
     #
-    print('LOAD RGB CPKT')
-    pth_file, _ = load_checkpoint(
-        config.rgb_cpkt,
-        model.rgb_encoder, strict=True, load_seperate_layers=False)
-    print('LOAD DEPTH CPKT')
-    pth_file, _ = load_checkpoint(
-       config.depth_cpkt,
-        model.depth_encoder, strict=False, load_seperate_layers=False)
+    # print('LOAD RGB CPKT')
+    # pth_file, _ = load_checkpoint(
+    #     '/home/papastrat/PycharmProjects/SLR_challenge-master/checkpoints/model_Pyramid_Transformer/dataset_Autsl/date_27_02_2021_13.30.54/best_model.pth',
+    #     model.rgb_encoder, strict=False, load_seperate_layers=False)
+    # print('LOAD DEPTH CPKT')
+    # pth_file, _ = load_checkpoint(
+    #     '/home/papastrat/PycharmProjects/SLR_challenge-master/checkpoints/model_Pyramid_Transformer/dataset_Autsl/date_27_02_2021_23.12.18/best_model.pth',
+    #     model.depth_encoder, strict=False, load_seperate_layers=False)
 
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")

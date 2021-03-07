@@ -1,9 +1,8 @@
-# Sign Language Video Pyramid Transformer (SLVPT)
-## Abstract
+# Sign language pyramid transformer PT
 
-## Contents
-* [Sign Language Video Pyramid Transformer](#pytorch-template-project)
-    * [Abstract](#abstract)
+
+
+* [Sign language pyramid transformer](#pytorch-template-project)
 	* [Requirements](#requirements)
 	* [Features](#features)
 	* [Folder Structure](#folder-structure)
@@ -20,9 +19,7 @@
 	* [License](#license)
 	* [Acknowledgements](#acknowledgements)
 
-
-
-
+<!-- /code_chunk_output -->
 
 
 ## TODOs
@@ -35,11 +32,8 @@
 
 ## Requirements
 
-### Installation & Data Preparation
-
-Please refer to 
 ```python
- pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 
@@ -166,51 +160,11 @@ ttrainer:
 
 
 ### Training
-To train any network simply run:
+To train the network simplt run:
 
   ```
-  python train.py -c path/to/config.yml
+  python train.py 
   ```
-
-#### RGB modality
-To train the  Pyramid Transformer using RGB modality, initially train the 3D backbone as:
-
-
-  ```
-  python train.py -c config/RGB/IR_CSN_152/trainer_config.yml
-  ```
-Then, using the trained 3D-CNN backbone train the Pyramid Transformer:
-
-  ```
-  python train.py -c config/RGB/Pyramid_Transformer/trainer_config.yml --pretrained_cpt path/to/backbone.pth
-  ```
-
-
-#### Depth modality
-
-To train the  Pyramid Transformer using Depth modality, initially train the 3D backbone as:
-
-
-  ```
-  python train.py -c config/Depth/IR_CSN_152/trainer_config.yml
-  ```
-Then, using the trained 3D-CNN backbone train the Pyramid Transformer:
-
-  ```
-  python train.py -c config/Depth/Pyramid_Transformer/trainer_config.yml --pretrained_cpkt path/to/backbone.pth
-  ```
-
-
-#### RGBD modality
-
-To train the  RGBD Transformer using RGB modality:
-
-
-  ```
-  python train_RGBD.py -c config/RGBD/trainer_RGBD_config.yml 
-  ```
-
-
 
 ### Resuming from checkpoints
 You can resume from a previously saved checkpoint by:
@@ -224,37 +178,32 @@ You can enable multi-GPU training by setting `gpu` argument of the config file t
 If configured to use smaller number of gpu than available, first n devices will be used by default.
 Specify indices of available GPUs by cuda environmental variable.
   ```
-  python train.py --gpu 0,1 -c path/to/config.yml
+  python train.py --gpu 0,1 -c config.yml
   ```
   This is equivalent to
   ```
-  CUDA_VISIBLE_DEVICES=0,1 python train.py -c path/to/config.yml
+  CUDA_VISIBLE_DEVICES=0,1 python train.py -c config.yml
   ```
 
 
 ### Testing
-You can test trained model by running `test.py` passing path to the trained checkpoint by `--pretrained_cpkt` argument.
+You can test trained model by running `test.py` passing path to the trained checkpoint by `--resume` argument.
 
 ```
-python test.py  -c path/to/config.yml --pretrained_cpkt path/to/checkpoint
+python test.py  -c config.yml -cpkt path/to/checkpoint
 ```
 
-## Pretrained Models
+### Validation data
+To split validation data from a data loader, call `BaseDataLoader.split_validation()`, then it will return a data loader for validation of size specified in your config file.
+The `validation_split` can be a ratio of validation set per total data(0.0 <= float < 1.0), or the number of samples (0 <= int < `n_total_samples`).
 
-Link to google drive with pretrained models
-
-[RGB Pyramid Transformer](linkrgb)
-
-[RGBD Pyramid Transformer](linkrgb)
+**Note**: the `split_validation()` method will modify the original data loader
+**Note**: `split_validation()` will return `None` if `"validation_split"` is set to `0`
 
 
-| Model                                                    | Backbone | Pretrain     | #Frame | Param. |  GFLOPs |   Validation Acc (%) |    Test Acc (%)      |                                                        Weights                                                               |
-|----------------------------------------------------------|:------------:|:--------:|:------:|:------:|:-------:|:--------------------:|:--------------------:|:---------------------------------------------------------------------------------------------------------------------------------:|
-|[RGB Video Pyramid Transformer]()                               |[ir-CSN-152]()|   IG-65M | 64     |        |          |                      |                     |                                                                          |
-|[RGBD Video  Pyramid Transformer]()                              |[ir-CSN-152]()|   IG-65M | 64     |        |          |                      |                     |                                                                          |
+
 
 ## License
 This project is licensed under the MIT License. See  LICENSE for more details
 
 ## Acknowledgements
-We appreciate developers of Video Model Zoo for the pretrained 3D-CNN models

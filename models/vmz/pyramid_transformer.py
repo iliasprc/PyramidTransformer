@@ -71,7 +71,7 @@ class PyramidTransformerResNet(nn.Module):
         self.tpn4 = SpatialModulation(512 * block.expansion, downsample_scale=8, k=1, s=1, d=1)
 
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
-        self.eca = ECA_3D(k_size=11)
+        self.eca = ECA_3D(k_size=9)
         self.fc = nn.Linear((512 + 256) * 4, 226)
 
         # init weights

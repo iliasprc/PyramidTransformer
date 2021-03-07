@@ -8,12 +8,12 @@ trainer:
   gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: False # load pretrained checkpoint
-  gradient_accumulation: 16 # gradient accumulation steps
-  rgb_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/model_Pyramid_Transformer/dataset_AUTSL/date_06_03_2021_13.09.07/best_model_epoch_4.pth
-  depth_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/trained/dept_pyramid_transformer_VAL_90.52/date_27_02_2021_23.12.18/best_model.pth
+  gradient_accumulation: 8 # gradient accumulation steps
+  rgb_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/model_IR_CSN_152/dataset_AUTSL/date_02_03_2021_20.35.10/best_model_epoch_4.pth
+  depth_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/model_IR_CSN_152/dataset_AUTSL/date_02_03_2021_20.35.10/best_model_epoch_4.pth
   log_interval: 1000 # print statistics every log_interval
   model:
-    name: RGBD_Transformer # model name
+    name: IR_CSN_152 # model name
     optimizer: # optimizer configuration
       type: SGD # optimizer type
       lr: 1e-2 # learning rate

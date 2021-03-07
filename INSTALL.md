@@ -59,14 +59,24 @@ python
 
 - Python >= 3.6
 - Numpy
+- [fvcore](https://github.com/facebookresearch/fvcore/): `pip install 'git+https://github.com/facebookresearch/fvcore'`
+  You can install them together at [pytorch.org](https://pytorch.org) to make sure of this.
 - simplejson: `pip install simplejson`
 - GCC >= 4.9
+- PyAV: `conda install av -c conda-forge`
+- ffmpeg (4.0 is prefereed, will be installed along with PyAV)
+- PyYaml: (will be installed along with fvcore)
+- tqdm: (will be installed along with fvcore)
+- iopath: `pip install -U iopath` or `conda install -c iopath iopath`
+- psutil: `pip install psutil`
 - OpenCV: `pip install opencv-python`
 - tensorboard: `pip install tensorboard`
+- moviepy: (optional, for visualizing video on tensorboard) `conda install -c conda-forge moviepy` or `pip install moviepy`
+- [Detectron2](https://github.com/facebookresearch/detectron2):`python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'`
 
-## PT
+## VoV3D
 ```
-git clone 
-cd 
+git clone https://github.com/youngwanLEE/VoV3D.git
+cd VoV3D
 python setup.py build develop
 ```

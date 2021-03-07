@@ -30,9 +30,10 @@ def main():
     now = datetime.datetime.now()
 
     cwd = os.getcwd()
-    config = OmegaConf.load(os.path.join(cwd, config_file))['tester']
+    config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
 
-
+    # config1 = OmegaConf.merge(config, conf)
+    # exit
     config.cwd = cwd
 
     dt_string = now.strftime("%d_%m_%Y_%H.%M.%S")

@@ -324,6 +324,8 @@ class SpatialModulation(nn.Module):
                  ):
         super(SpatialModulation, self).__init__()
         k1 = int(np.log2(planes))
+        print(k1)
+        self.use_cls_token = False
         if k1 % 2 == 0:
             k1 -= 5
         else:
@@ -354,6 +356,10 @@ class SpatialModulation(nn.Module):
         # print(x.shape)
         x = rearrange(x, 'b c t h w -> (t h w) b c')
 
+        # x = self.pool(x).squeeze(-1).squeeze(-1).permute(2 ,0 ,1)
+        # print(x.shape)
+
+        # print(x.shape)
         if self.use_cls_token:
             cls_token = repeat(self.cls_token, 'n d -> n b d', b=b)
             # print(cls_token.shape,x.shape)

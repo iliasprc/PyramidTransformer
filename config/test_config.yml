@@ -6,7 +6,7 @@ tester:
   gpu: 0 # id of gpu
   save: True # save checkpoint
   load: True # load pretrained checkpoint
-  pretrained_cpkt: /home/iliask/Desktop/SLR_CHALLENGE_CPKTS/date_06_03_2021_13.09.07-20210306T173627Z-001/date_06_03_2021_13.09.07/best_model_epoch_1.pth
+  pretrained_cpkt: /home/iliask/PycharmProjects/PyramidTransformer/checkpoints/model_Pyramid_Transformer/dataset_AUTSL/date_03_03_2021_10.24.19/best_model_epoch_7.pth
   log_interval: 1000 # print statistics every log_interval
   model:
     name: Pyramid_Transformer # model name
@@ -16,7 +16,7 @@ tester:
       shuffle: True # shuffle samples after every epoch
       num_workers: 4 # number of thread for dataloader
     val:
-      batch_size: 4
+      batch_size: 1
       shuffle: False
       num_workers: 2
     test:
@@ -26,7 +26,7 @@ tester:
   dataset:
     input_data: /home/iliask/Desktop/ilias/datasets/challenge # data directory
     name: AUTSL # dataset name
-    modality: RGB # type of modalityT
+    modality: RGB # type of modality
     classes: 226 # number of classes
     normalize: True # mean, std normalization
     padding : True # pad videos

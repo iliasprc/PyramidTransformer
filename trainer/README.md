@@ -1,3 +1,1 @@
 # Trainer 
-
-## Training instructions

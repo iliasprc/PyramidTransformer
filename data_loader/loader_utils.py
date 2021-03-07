@@ -347,10 +347,10 @@ def load_video(path, time_steps, dim=(224, 224), augmentation='test', padding=Tr
     Returns:
 
     """
-   # video_array, _, _ = torchvision.io.read_video(path)
-    #video_array = video_array.numpy().astype(np.uint8)
-    video_array = skvideo.io.vread(path)
-    video_array = video_array.astype(np.uint8)
+    video_array, _, _ = torchvision.io.read_video(path)
+    video_array = video_array.numpy().astype(np.uint8)
+   # video_array = skvideo.io.vread(path)
+   # video_array = video_array.astype(np.uint8)
     T, H, W, C = video_array.shape
     img_sequence = []
     num_of_images = list(range(T))

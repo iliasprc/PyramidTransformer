@@ -43,25 +43,25 @@ class AUTSL_RGBD(Base_dataset):
 
         train_paths, train_labels, _ = read_autsl_labelsv2(
             './data_loader/autsl/train_labels.csv')
-        val_paths, val_labels, _ = read_autsl_labelsv2('./data_loader/autsl/ground_truth_validation.csv')
+        val_paths, val_labels, _ = read_autsl_labelsv2('./data_loader/autsl/valid_lias_labels.csv')
         if mode == 'train':
             self.list_IDs = train_paths
             self.labels = train_labels
         elif mode == 'val':
             self.list_IDs = val_paths
             self.labels = val_labels
-        elif mode == 'test':
+        elif mode == 'validation':
             self.labels = []
             # print(os.path.join(args.input_data, f'challenge/val/*{self.modal}.mp4'))
             # print(glob.glob(os.path.join(args.input_data, f'challenge/val/*color.mp4')))
             self.validation_rgb = natural_sort(
-                glob.glob(os.path.join(self.config.dataset.input_data, f'challenge/test/*color.mp4')))
+                glob.glob(os.path.join(self.config.dataset.input_data, f'challenge/val/*color.mp4')))
             self.validation_depth = natural_sort(
-                glob.glob(os.path.join(self.config.dataset.input_data, f'challenge/test/*depth.mp4')))
+                glob.glob(os.path.join(self.config.dataset.input_data, f'challenge/val/*depth.mp4')))
             # self.validation_depth
             self.list_IDs = []
             for path in self.validation_depth:
-                label = path.replace(self.config.dataset.input_data, '').replace('challenge/test/', '').replace(
+                label = path.replace(self.config.dataset.input_data, '').replace('challenge/val/', '').replace(
                     f'_depth.mp4', '')
                 self.list_IDs.append(path.replace(f'_depth.mp4', ''))
                 self.labels.append(label)
@@ -95,7 +95,7 @@ class AUTSL_RGBD(Base_dataset):
                                       dim=self.dim,
                                       time_steps=self.seq_length, augmentation=aug)
 
-        elif self.mode == 'test':
+        elif self.mode == 'validation':
             aug = 'test'
             rgb_vid_name = f'{self.list_IDs[index]}_color.mp4'
             depth_vid_name = f'{self.list_IDs[index]}_depth.mp4'
