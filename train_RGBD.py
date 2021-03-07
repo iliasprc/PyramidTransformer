@@ -22,18 +22,30 @@ from models.model_utils import RGBD_model
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer_rgbd import TrainerRGBD
 from utils.logger import Logger
+from utils.util import arguments,getopts
+import sys
 
 config_file = 'config/RGBD/trainer_RGBD_config.yml'
 
 
 def main():
+    args = arguments()
+    myargs = getopts(sys.argv)
     now = datetime.datetime.now()
 
     cwd = os.getcwd()
-    config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
 
-    # config1 = OmegaConf.merge(config, conf)
-    # exit
+    if len(myargs) > 0:
+        if 'c' in myargs:
+            config_file = myargs['c']
+    else:
+        config_file = 'config/RGBD/trainer_RGBD_config.yml'
+
+    config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
+    if len(myargs) > 0:
+        for key, v in myargs.items():
+            if key in config.keys():
+                config[key] = v
     config.cwd = cwd
 
     dt_string = now.strftime("%d_%m_%Y_%H.%M.%S")

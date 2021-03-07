@@ -30,13 +30,20 @@ config_file = 'config/trainer_config.yml'
 
 
 def main():
+    args = arguments()
+    myargs = getopts(sys.argv)
     now = datetime.datetime.now()
-
     cwd = os.getcwd()
+    if len(myargs) > 0:
+        if 'c' in myargs:
+            config_file = myargs['c']
+    else:
+        config_file = 'config/trainer_config.yml'
+    #print(config_file)
     config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
 
     config.cwd = cwd
-    myargs = getopts(sys.argv)
+
     if len(myargs) > 0:
         for key, v in myargs.items():
             if key in config.keys():

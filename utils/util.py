@@ -28,15 +28,15 @@ train_model_configs = {
 def arguments():
     parser = argparse.ArgumentParser(description='SLR challenge')
 
-    parser.add_argument('--c', type=str, default='config', metavar='config',
+    parser.add_argument('-c', type=str, default='config', metavar='config',
                         help='config file path')
-    parser.add_argument('--modality', type=str, default='RGB', choices=['RGB', 'Depth', 'RGBD'])
-    parser.add_argument('--model', type=str, default='Pyramid_Transformer')
+    parser.add_argument('--modality', type=str, default='RGB', choices=['RGB', 'Depth', 'RGBD'],help='modality yo use for experiments')
+    parser.add_argument('--model', type=str, default='Pyramid_Transformer', choices=['IR_CSN_152', 'Pyramid_Transformer'])
     parser.add_argument('--gpu', type=str, default='0,1')
-    parser.add_argument('--load', type=bool, default=False)
-    parser.add_argument('--cpkt', type=str,
+    parser.add_argument('--load', type=bool, default=False,help='load pretrained checkpoint')
+    parser.add_argument('--pretrained_cpkt', type=str,
                         default='',
-                        help='checkpoint')
+                        help='checkpoint file')
     args = parser.parse_args()
 
     return args

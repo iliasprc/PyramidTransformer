@@ -20,12 +20,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from data_loader.dataset import data_generators
 from models.model_utils import SLR_video_encoder
-from models.model_utils import select_optimizer, load_checkpoint
+from models.model_utils import load_checkpoint
 from trainer.tester import Tester
-from utils import getopts, arguments,test_model_configs
+from utils import getopts, arguments
 from utils.logger import Logger
-
-config_file = 'config/test_config.yml'
 
 
 def main():
@@ -33,9 +31,14 @@ def main():
 
     cwd = os.getcwd()
     args = arguments()
-
-    config = OmegaConf.load(os.path.join(cwd, config_file))['tester']
     myargs = getopts(sys.argv)
+    if len(myargs) > 0:
+        if 'c' in myargs:
+            config_file = myargs['c']
+    else:
+        config_file = 'config/test_config.yml'
+    config = OmegaConf.load(os.path.join(cwd, config_file))['tester']
+
     if len(myargs) > 0:
         for key, v in myargs.items():
             if key in config.keys():
@@ -80,7 +83,7 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device: {device}')
 
-    #log.info(f"{model}")
+    # log.info(f"{model}")
     log.info(f'{len(classes)}')
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
@@ -90,9 +93,7 @@ def main():
         model.to(device)
 
     if (config.load):
-
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
-
 
     tester = Tester(config, model=model,
                     data_loader=training_generator, writer=writer, logger=log,
