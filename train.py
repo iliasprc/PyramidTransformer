@@ -61,7 +61,7 @@ def main():
     writer = SummaryWriter(writer_path)
     shutil.copy(os.path.join(config.cwd, config_file), cpkt_fol_name)
 
-    log.info("date and time =", dt_string)
+    log.info(f"date and time = {dt_string}")
     os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
     log.info(f'pyTorch VERSION:{torch.__version__}', )
     log.info(f'CUDA VERSION')
@@ -107,9 +107,12 @@ def main():
         # torch.nn.init.xavier_uniform(model.fc.weight)
     else:
         pth_file = None
-    model.to(device)
+    mode
+    l.to(device)
 
-
+    #
+    from models.model_utils import freeze_bn
+    #freeze_bn(model)
     optimizer, scheduler = select_optimizer(model, config['model'],pth_file)
 
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")

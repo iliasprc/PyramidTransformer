@@ -69,10 +69,10 @@ class VideoResNet(nn.Module):
                     nn.init.constant_(m.bn3.weight, 0)
 
     def forward(self, x, y=None):
-        with torch.no_grad():
-            x = self.stem(x)
+        #@@#with torch.no_grad():
+        x = self.stem(x)
 
-            x = self.layer1(x)
+        x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)

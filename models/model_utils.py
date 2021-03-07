@@ -211,6 +211,16 @@ def init_weights_rnn(model):
     return model
 
 
+
+def freeze_bn(model):
+    for module in model.modules():
+        if isinstance(module, torch.nn.modules.BatchNorm1d):
+            module.eval()
+        if isinstance(module, torch.nn.modules.BatchNorm2d):
+            module.eval()
+        if isinstance(module, torch.nn.modules.BatchNorm3d):
+            module.eval()
+
 def weights_init_uniform(net):
     for name, param in net.named_parameters():
         if 'bias' in name:
