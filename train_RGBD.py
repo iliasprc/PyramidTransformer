@@ -73,14 +73,14 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device {device}')
     #
-    # print('LOAD RGB CPKT')
-    # pth_file, _ = load_checkpoint(
-    #     '/home/papastrat/PycharmProjects/SLR_challenge-master/checkpoints/model_Pyramid_Transformer/dataset_Autsl/date_27_02_2021_13.30.54/best_model.pth',
-    #     model.rgb_encoder, strict=False, load_seperate_layers=False)
-    # print('LOAD DEPTH CPKT')
-    # pth_file, _ = load_checkpoint(
-    #     '/home/papastrat/PycharmProjects/SLR_challenge-master/checkpoints/model_Pyramid_Transformer/dataset_Autsl/date_27_02_2021_23.12.18/best_model.pth',
-    #     model.depth_encoder, strict=False, load_seperate_layers=False)
+    print('LOAD RGB CPKT')
+    pth_file, _ = load_checkpoint(
+        config.rgb_cpkt,
+        model.rgb_encoder, strict=True, load_seperate_layers=False)
+    print('LOAD DEPTH CPKT')
+    pth_file, _ = load_checkpoint(
+       config.depth_cpkt,
+        model.depth_encoder, strict=False, load_seperate_layers=False)
 
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")

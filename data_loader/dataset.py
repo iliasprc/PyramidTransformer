@@ -42,9 +42,9 @@ def RGBD_generators( config):
     test_params = {'batch_size': 1,
                    'shuffle': False,
                    'num_workers': 2}
-    val_params = {'batch_size': config.dataloader.validation.batch_size,
-                  'shuffle': config.dataloader.validation.shuffle,
-                  'num_workers': config.dataloader.validation.num_workers,
+    val_params = {'batch_size': config.dataloader.val.batch_size,
+                  'shuffle': config.dataloader.val.shuffle,
+                  'num_workers': config.dataloader.val.num_workers,
                   'pin_memory': True}
 
     train_params = {'batch_size': config.dataloader.train.batch_size,
@@ -60,6 +60,6 @@ def RGBD_generators( config):
 
     validation_set = AUTSL_RGBD(config, validation_prefix, classes)
     validation_generator = data.DataLoader(validation_set, **val_params)
-    test_set = AUTSL_RGBD(config,  'validation', classes)
+    test_set = AUTSL_RGBD(config,  'test', classes)
     test_generator = data.DataLoader(test_set, **test_params)
     return training_generator, validation_generator, test_generator, classes
