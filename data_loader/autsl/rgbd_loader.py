@@ -3,7 +3,6 @@ import os
 import re
 
 import torch
-from omegaconf import OmegaConf
 
 from base.base_data_loader import Base_dataset
 from data_loader.loader_utils import load_video, read_autsl_labelsv2
@@ -103,8 +102,8 @@ class AUTSL_RGBD(Base_dataset):
                                     time_steps=self.seq_length, augmentation=aug)
             depth_tensor = load_video(self.validation_depth[index], dim=self.dim,
                                       time_steps=self.seq_length, augmentation=aug)
-            # print(rgb_tensor.shape,depth_tensor.shape)
-            return (rgb_tensor, depth_tensor, self.labels[index])
+
+            return rgb_tensor, depth_tensor, self.labels[index]
         target_label = torch.LongTensor([int(self.labels[index])])
 
         return (rgb_tensor, depth_tensor, target_label)

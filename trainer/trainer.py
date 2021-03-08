@@ -84,10 +84,13 @@ class Trainer(BaseTrainer):
 
             acc = np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()) / target.size(0)
             writer_step = (epoch - 1) * self.len_epoch + batch_idx
-            self.train_metrics.update_all_metrics(
-                {
-                    'loss': loss.item(), 'acc': acc,
-                }, writer_step=writer_step)
+            # self.train_metrics.update_all_metrics(
+            #     {
+            #         'loss': loss.item(), 'acc': acc,
+            #     }, writer_step=writer_step)
+            self.train_metrics.update(key='loss', value=loss.item(), n=1, writer_step=writer_step)
+            self.train_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()),
+                                      n=target.size(0), writer_step=writer_step)
 
             self._progress(batch_idx, epoch, metrics=self.train_metrics, mode='train')
 
@@ -121,8 +124,12 @@ class Trainer(BaseTrainer):
                 prediction = torch.max(output, 1)
                 acc = np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()) / target.size(0)
 
-                self.valid_metrics.update_all_metrics(
-                    {'loss': loss.item(), 'acc': acc}, writer_step=writer_step)
+                # self.valid_metrics.update_all_metrics(
+                #     {'loss': loss.item(), 'acc': acc}, writer_step=writer_step)
+
+                self.valid_metrics.update(key='loss',value=loss.item(),n=1,writer_step=writer_step)
+                self.valid_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()), n=target.size(0), writer_step=writer_step)
+
         self._progress(batch_idx, epoch, metrics=self.valid_metrics, mode=mode, print_summary=True)
 
         # check_dir(self.checkpoint_dir)

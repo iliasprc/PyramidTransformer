@@ -74,15 +74,14 @@ class Tester(BaseTrainer):
                 prediction = torch.max(output, 1)
                 acc = np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()) / target.size(0)
 
-                self.valid_metrics.update_all_metrics(
-                    {'loss': loss.item(), 'acc': acc}, writer_step=writer_step)
+                self.valid_metrics.update(key='loss',value=loss.item(),n=1,writer_step=writer_step)
+                self.valid_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()), n=target.size(0), writer_step=writer_step)
+
         self._progress(batch_idx, epoch, metrics=self.valid_metrics, mode=mode, print_summary=True)
 
-        # check_dir(self.checkpoint_dir)
+
         val_loss = self.valid_metrics.avg('loss')
-        # pred_name = os.path.join(self.checkpoint_dir, f'{mode}_epoch_{epoch:d}_WER_{werr:.2f}_.csv')
-        #
-        # write_csv(self.valid_sentences, pred_name)
+
 
         return val_loss
 
@@ -109,6 +108,8 @@ class Tester(BaseTrainer):
 
                 predictions.append(f"{target[0]},{prediction.cpu().numpy()[0]}")
         self.logger.info('Inference done')
+        pred_name = os.path.join(self.checkpoint_dir, f'predictions.csv')
+        write_csv(predictions, pred_name)
         return predictions
 
     def _progress(self, batch_idx, epoch, metrics, mode='', print_summary=False):

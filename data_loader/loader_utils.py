@@ -2,10 +2,10 @@ import glob
 import math
 import os
 import random
-import skvideo.io
+
 import numpy as np
+import skvideo.io
 import torch
-import torchvision
 from PIL import Image
 from torchvision import transforms
 
@@ -347,8 +347,8 @@ def load_video(path, time_steps, dim=(224, 224), augmentation='test', padding=Tr
     Returns:
 
     """
-   # video_array, _, _ = torchvision.io.read_video(path)
-    #video_array = video_array.numpy().astype(np.uint8)
+    # video_array, _, _ = torchvision.io.read_video(path)
+    # video_array = video_array.numpy().astype(np.uint8)
     video_array = skvideo.io.vread(path)
     video_array = video_array.astype(np.uint8)
     T, H, W, C = video_array.shape

@@ -36,16 +36,17 @@ model_urls = {
     'r2plus1d_18': 'https://download.pytorch.org/models/r2plus1d_18-91a641e6.pth',
 }
 
-def SLR_video_encoder(config,N_classes):
 
-
+def SLR_video_encoder(config, N_classes):
     if config.model.name == 'IR_CSN_152':
         return ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
     elif config.model.name == 'ECA_IR_CSN_152':
-        return eca_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
+        return eca_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
+                              num_classes=N_classes)
 
     elif config.model.name == 'Pyramid_Transformer':
-        return ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
+        return ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
+                                      num_classes=N_classes)
 
 
 def RGBD_model(config, N_classes):
@@ -91,10 +92,10 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
         model: (torch.nn.Module) model for which the parameters are loaded
         optimizer: (torch.optim) optional: resume optimizer from checkpoint
     """
-    checkpoint1 = torch.load(checkpoint, map_location='cpu' )
+    checkpoint1 = torch.load(checkpoint, map_location='cpu')
     pretrained_dict = checkpoint1['model_dict']
     model_dict = model.state_dict()
-    print(pretrained_dict.keys() )
+    print(pretrained_dict.keys())
     print(model_dict.keys())
     # # # 1. filter out unnecessary keys
     # # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
@@ -117,10 +118,8 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     if not os.path.exists(checkpoint):
         raise ("File doesn't exist {}".format(checkpoint))
 
-
     if (not load_seperate_layers):
-
-        #model.load_state_dict(checkpoint1['model_dict'] , strict=strict)p
+        # model.load_state_dict(checkpoint1['model_dict'] , strict=strict)p
         model.load_state_dict(pretrained_dictnew, strict=strict)
 
     epoch = 0
@@ -155,8 +154,6 @@ def load_checkpoint_modules(checkpoint, model, strict=True, optimizer=None, load
         optimizer.load_state_dict(checkpoint['optimizer_dict'])
 
     return checkpoint, epoch
-
-
 
 
 def set_bn_eval(m):
@@ -232,8 +229,8 @@ def select_optimizer(model, config, checkpoint=None):
     elif (opt == 'RMSprop'):
         print(" use RMS  lr", lr)
         optimizer = optim.RMSprop(model.parameters(), lr=float(config['optimizer']['lr']))
-    if (checkpoint!=None):
-        #print('load opt cpkt')
+    if (checkpoint != None):
+        # print('load opt cpkt')
         optimizer.load_state_dict(checkpoint['optimizer_dict'])
         for g in optimizer.param_groups:
             g['lr'] = 0.005

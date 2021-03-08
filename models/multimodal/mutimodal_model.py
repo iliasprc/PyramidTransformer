@@ -1,13 +1,13 @@
+import os
+import warnings
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import warnings
-import os
 from omegaconf import OmegaConf
+
 from base.base_model import BaseModel
-
-from models.vmz.layers import IPConv3DDepthwise, BasicStem, BasicStem_Pool, SpatialModulation, Conv3DDepthwise, ECA_3D
-
+from models.vmz.layers import BasicStem_Pool, SpatialModulation, Conv3DDepthwise, ECA_3D
 from models.vmz.resnet import Bottleneck
 
 model_urls = {
@@ -35,6 +35,7 @@ model_urls = {
     'mc3_18': 'https://download.pytorch.org/models/mc3_18-a90a0ba3.pth',
     'r2plus1d_18': 'https://download.pytorch.org/models/r2plus1d_18-91a641e6.pth',
 }
+
 
 class TransformerResNet(nn.Module):
 
@@ -147,7 +148,8 @@ class TransformerResNet(nn.Module):
                     nn.init.constant_(m.bias, 0)
 
 
-def ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=False, progress=False, num_classes=226, **kwargs):
+def ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=False, progress=False, num_classes=226,
+                           **kwargs):
     avail_pretrainings = [
         "ig65m_32frms",
         "ig_ft_kinetics_32frms",
@@ -168,14 +170,13 @@ def ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=False
             pretrained = False
     use_pool1 = True
     model = TransformerResNet(block=Bottleneck, conv_makers=[Conv3DDepthwise] * 4, layers=[3, 8, 36, 3],
-                              stem=BasicStem_Pool , num_classes=num_classes, **kwargs)
+                              stem=BasicStem_Pool, num_classes=num_classes, **kwargs)
 
     # We need exact Caffe2 momentum for BatchNorm scaling
     for m in model.modules():
         if isinstance(m, nn.BatchNorm3d):
             m.eps = 1e-3
             m.momentum = 0.9
-
 
     model.fc = nn.Linear(2048, 400)
     state_dict = torch.hub.load_state_dict_from_url(
@@ -199,13 +200,13 @@ class RGBD_Transformer(BaseModel):
         config = OmegaConf.load(os.path.join(config.cwd, 'models/multimodal/model.yml'))['model']
         self.rgb_encoder = ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                                                   num_classes=N_classes)
-        self.depth_encoder = ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
+        self.depth_encoder = ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True,
+                                                    progress=False,
                                                     num_classes=N_classes)
         self.eca = ECA_3D(k_size=11)
         self.classifier = nn.Linear(6144, N_classes)
         self.device0 = torch.device('cuda:0')
         self.device1 = torch.device('cuda:1')
-
 
     def forward(self, train_batch, return_loss=True):
         rgb_tensor, depth_tensor, y = train_batch
@@ -214,7 +215,8 @@ class RGBD_Transformer(BaseModel):
         features_depth = self.depth_encoder(depth_tensor)
 
         concatenated = torch.cat((features_rgb, features_depth), dim=1)
-        concatenated= self.eca(concatenated.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).squeeze(-1).squeeze(-1).squeeze(-1)
+        concatenated = self.eca(concatenated.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).squeeze(-1).squeeze(-1).squeeze(
+            -1)
         logits = self.classifier(concatenated)
         if return_loss:
             loss = F.cross_entropy(logits, y.squeeze(-1))  # .mean()

@@ -39,7 +39,7 @@ def main():
             config_file = myargs['c']
     else:
         config_file = 'config/trainer_config.yml'
-    #print(config_file)
+
     config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
 
     config.cwd = cwd
@@ -109,7 +109,8 @@ def main():
         pth_file = None
     model.to(device)
 
-
+    from torchsummary import summary
+    summary(model,(2,3,64,224,224))
     optimizer, scheduler = select_optimizer(model, config['model'],pth_file)
 
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")

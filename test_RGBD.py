@@ -20,10 +20,10 @@ from torch.utils.tensorboard import SummaryWriter
 from data_loader.dataset import RGBD_generators
 from models.model_utils import RGBD_model
 from models.model_utils import select_optimizer, load_checkpoint
-from trainer.trainer_rgbd import TrainerRGBD
+from trainer.tester_rgbd import TesterRGBD
 from utils.logger import Logger
 
-config_file = 'config/RGBD/trainer_RGBD_config.yml'
+config_file = 'config/RGBD/tester_RGBD_config.yml'
 
 
 def main():
@@ -89,13 +89,13 @@ def main():
     optimizer, scheduler = select_optimizer(model, config['model'])
 
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
-    trainer = TrainerRGBD(config, model=model, optimizer=optimizer,
+    tester = TesterRGBD(config, model=model,
                           data_loader=training_generator, writer=writer, logger=log,
                           valid_data_loader=val_generator, test_data_loader=test_generator,
-                          lr_scheduler=scheduler,
+
                           checkpoint_dir=cpkt_fol_name)
 
-    trainer.predict(0)
+    tester.predict(0)
 
 
 if __name__ == '__main__':

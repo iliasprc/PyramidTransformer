@@ -250,11 +250,11 @@ Link to google drive with pretrained models
 
 | Model                                                    | Backbone | Pretrain     | #Frame | Param. |  GFLOPs |   Validation Acc (%) |    Test Acc (%)      |                                                        Weights                                                               |
 |----------------------------------------------------------|:------------:|:--------:|:------:|:------:|:-------:|:--------------------:|:--------------------:|:---------------------------------------------------------------------------------------------------------------------------------:|
-|[RGB Video Pyramid Transformer]()                               |[ir-CSN-152]()|   IG-65M | 64     |        |          |                      |                     |                                                                          |
-|[RGBD Video  Pyramid Transformer]()                              |[ir-CSN-152]()|   IG-65M | 64     |        |          |                      |                     |                                                                          |
+|[RGB Video Pyramid Transformer]()                         |[ir-CSN-152]()| [**IG-65M**](https://research.fb.com/wp-content/uploads/2019/05/Large-scale-weakly-supervised-pre-training-for-video-action-recognition.pdf)    | 64     |        |          |                      |                     |                                                                          |
+|[RGBD Video  Pyramid Transformer]()                       |[ir-CSN-152]()| [**IG-65M**](https://research.fb.com/wp-content/uploads/2019/05/Large-scale-weakly-supervised-pre-training-for-video-action-recognition.pdf) | 64     |        |          |                      |                     |                                                                          |
 
 ## License
 This project is licensed under the MIT License. See  LICENSE for more details
 
 ## Acknowledgements
-We appreciate developers of Video Model Zoo for the pretrained 3D-CNN models
+We appreciate developers of Video Model Zoo [VMZ](https://github.com/facebookresearch/VMZ) for the pretrained 3D-CNN models
