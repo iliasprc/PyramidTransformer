@@ -6,7 +6,7 @@ tester:
   gpu: 0 # id of gpu
   save: True # save checkpoint
   load: True # load pretrained checkpoint
-  pretrained_cpkt: /home/iliask/PycharmProjects/PyramidTransformer/checkpoints/model_Pyramid_Transformer/dataset_AUTSL/date_03_03_2021_10.24.19/best_model_epoch_7.pth
+  pretrained_cpkt: ./checkpoints/model_Pyramid_Transformer/dataset_AUTSL/date_03_03_2021_10.24.19/best_model_epoch_7.pth
   log_interval: 1000 # print statistics every log_interval
   model:
     name: IR_CSN_152 # model name
@@ -24,7 +24,7 @@ tester:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/iliask/Desktop/ilias/datasets/challenge # data directory
+    input_data: data/ # data directory
     name: AUTSL # dataset name
     modality: RGB # type of modality
     classes: 226 # number of classes

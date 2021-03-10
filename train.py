@@ -5,11 +5,11 @@ Created on Wed Feb 13 10:49:41 2019
 @author: papastrat
 
 """
-import argparse
 import datetime
 import os
 import random
 import shutil
+import sys
 
 # import configargparse
 import numpy as np
@@ -23,8 +23,7 @@ from models.model_utils import SLR_video_encoder
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer import Trainer
 from utils.logger import Logger
-from utils.util import arguments,getopts
-import sys
+from utils.util import arguments, getopts
 
 config_file = 'config/trainer_config.yml'
 
@@ -56,20 +55,21 @@ def main():
     log = Logger(path=cpkt_fol_name, name=config.logger).get_logger()
 
     writer_path = os.path.join(config.cwd,
-                               'runs/model_' + config.model.name + '/dataset_' + config.dataset.name + '/date_' + dt_string)
+                               'checkpoints/model_' + config.model.name + '/dataset_' + config.dataset.name + '/date_' + dt_string + '/runs/')
+    # os.path.join(config.cwd,
+    # 'runs/model_' + config.model.name + '/dataset_' + config.dataset.name + '/date_' + dt_string)
 
     writer = SummaryWriter(writer_path)
     shutil.copy(os.path.join(config.cwd, config_file), cpkt_fol_name)
 
-    log.info("date and time =", dt_string)
+    # log.info("date and time =", dt_string)
     os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
     log.info(f'pyTorch VERSION:{torch.__version__}', )
     log.info(f'CUDA VERSION')
 
     log.info(f'CUDNN VERSION:{torch.backends.cudnn.version()}')
     log.info(f'Number CUDA Devices: {torch.cuda.device_count()}')
-
-
+    ## Reproducibility seeds
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
     random.seed(config.seed)
@@ -86,32 +86,27 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device: {device}')
 
-
-
-    #log.info(f"{model}")
     log.info(f'{len(classes)}')
 
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
-            print("Let's use", torch.cuda.device_count(), "GPUs!")
+            log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
 
             model = torch.nn.DataParallel(model)
 
     if (config.load):
         model.fc = torch.nn.Linear(2048, 226)
-        # model.model.classifier = torch.nn.Linear(3840, 226)
+
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-        resume_epoch = 0
+
         model.fc = torch.nn.Linear(2048, 226)
-        # model.fc = torch.nn.Linear(2048, 226)
-        # torch.nn.init.xavier_uniform(model.fc.weight)
+
     else:
         pth_file = None
     model.to(device)
 
-    from torchsummary import summary
-    summary(model,(2,3,64,224,224))
-    optimizer, scheduler = select_optimizer(model, config['model'],pth_file)
+
+    optimizer, scheduler = select_optimizer(model, config['model'], pth_file)
 
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     trainer = Trainer(config, model=model, optimizer=optimizer,

@@ -176,7 +176,7 @@ class MetricTracker:
         self.writer = writer
         self.mode = mode + '/'
         self.keys = keys
-        # print(self.keys)
+
         self._data = pd.DataFrame(index=keys, columns=['total', 'counts', 'average'])
         self.reset()
 
@@ -187,7 +187,7 @@ class MetricTracker:
     def update(self, key, value, n=1, writer_step=1):
         if self.writer is not None:
             self.writer.add_scalar(self.mode + key, value, writer_step)
-        self._data.total[key] += value * n
+        self._data.total[key] += value
         self._data.counts[key] += n
         self._data.average[key] = self._data.total[key] / self._data.counts[key]
 

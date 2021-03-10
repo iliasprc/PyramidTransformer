@@ -65,22 +65,26 @@ Please refer to
   │   └── base_trainer.py
   ├── checkpoints/
   │   ├── models/ - trained models are saved here
-  │   └── log/ - default logdir for tensorboard and logging output
+  │   	  └── log/ - default logdir for  logging output
   │
   ├── config - holds configuration for training
+  |   ├── RGB/ -configs for training and testing with  RGB modality
+  │   ├── Depth/ -configs for training and testing with depth modality 
+  │   ├── RGBD/
   │   ├── trainer_config.yml
   │   ├── trainer_RGBD_config.yml
   │   └── 
   │
   ├── data_loader/ - anything about data loading goes here
-  │   └── loader_utils.py - functions to load and preprocess data
+  │   ├── autsl / 
+  │       ├── autsl_loader - dataloader for AUTSL dataset
+  │   ├── loader_utils.py - functions to load and preprocess data
   │   ├── dataset.py - initialize dataloader functions
   ├── data/ - default directory for storing input data
   │
   ├── models/ - models, losses, and metrics
   │   ├── model.py
   │   ├── model_utils.py - model functions, optimizer and weight initializations
-  │
   │
   ├── trainer/ - training and testing functions
   │   └── trainer.py
@@ -100,14 +104,12 @@ Please refer to
   ```
 
 ## Usage
-The code in this repo is an MNIST example of the template.
-Try `python train.py -c config.yml` to run code.
+
 
 ### Config file format
 Config files are in `.yml` format. These are the default training options
 ```yaml
-ttrainer:
-  input_data: /home/papastrat/Desktop/ilias/datasets/ # path of input data
+trainer:
   cwd: /home/papastrat/PycharmProjects/PyramidTransformer # working directory
   logger: SLR_challenge # logger name
   epochs: 30 # number of training epochs
@@ -136,7 +138,7 @@ ttrainer:
       batch_size: 4 # batch size
       shuffle: True # shuffle samples after every epoch
       num_workers: 4 # number of thread for dataloader
-    validation:
+    val:
       batch_size: 4
       shuffle: False
       num_workers: 4
@@ -145,10 +147,9 @@ ttrainer:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets/
+    input_data: data/
     name: AUTSL # dataset name
-    modality: RGB # type of modality
-    images_path: challenge/ # data directory
+    modality: depth # type of modality
     classes: 226 # number of classes
     normalize: True # mean, std normalization
     padding : True # pad videos
@@ -159,7 +160,7 @@ ttrainer:
     val:
       seq_length: 64
       augmentation: False
-    validation:
+    test:
       seq_length: 64
       augmentation: False
 ```

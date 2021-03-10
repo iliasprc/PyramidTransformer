@@ -186,13 +186,13 @@ class TrainerRGBD(BaseTrainer):
 
     def _progress(self, batch_idx, epoch, metrics, mode='', print_summary=False):
         metrics_string = metrics.calc_all_metrics()
-        if (batch_idx % self.log_step == 0):
+        if ((batch_idx * self.config.dataloader.train.batch_size) % self.log_step == 0):
 
             if metrics_string == None:
                 self.logger.warning(f" No metrics")
             else:
                 self.logger.info(
-                    f"{mode} Epoch: [{epoch:2d}/{self.epochs:2d}]\t Video [{batch_idx:5d}/{self.len_epoch:5d}]\t {metrics_string}")
+                    f"{mode} Epoch: [{epoch:2d}/{self.epochs:2d}]\t Video [{batch_idx * self.config.dataloader.train.batch_size:5d}/{self.len_epoch:5d}]\t {metrics_string}")
         elif print_summary:
             self.logger.info(
                 f'{mode} summary  Epoch: [{epoch}/{self.epochs}]\t {metrics_string}')

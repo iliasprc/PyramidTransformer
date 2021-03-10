@@ -36,7 +36,7 @@ trainer:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets/challenge # path to data
+    input_data: data/ # path to data
     name: AUTSL # dataset name
     modality: depth # type of modality
     images_path: challenge/ # data directory

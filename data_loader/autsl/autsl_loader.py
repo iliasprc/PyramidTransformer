@@ -25,7 +25,7 @@ class AUTSL(Base_dataset):
             classes:
         """
         super(AUTSL, self).__init__(config, mode, classes)
-        print(config)
+        #print(config)
         self.modality = self.config.dataset.modality
         self.mode = mode
         self.dim = self.config.dataset.dim
@@ -60,7 +60,7 @@ class AUTSL(Base_dataset):
                     '')
                 self.labels.append(label)
 
-        print(f'Samples {len(self.list_IDs)} {self.mode} modality {self.modal}')
+        #print(f'Samples {len(self.list_IDs)} {self.mode} modality {self.modal}')
 
     def __len__(self):
         return len(self.list_IDs)

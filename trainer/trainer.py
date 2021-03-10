@@ -1,13 +1,10 @@
-import json
 import os
 
 import numpy as np
 import torch
-import torch.nn as nn
 
 from base import BaseTrainer
 from models.model_utils import save_checkpoint_slr
-from utils.metrics import accuracy
 from utils.util import MetricTracker
 from utils.util import write_csv, check_dir
 
@@ -127,8 +124,9 @@ class Trainer(BaseTrainer):
                 # self.valid_metrics.update_all_metrics(
                 #     {'loss': loss.item(), 'acc': acc}, writer_step=writer_step)
 
-                self.valid_metrics.update(key='loss',value=loss.item(),n=1,writer_step=writer_step)
-                self.valid_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()), n=target.size(0), writer_step=writer_step)
+                self.valid_metrics.update(key='loss', value=loss.item(), n=1, writer_step=writer_step)
+                self.valid_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()),
+                                          n=target.size(0), writer_step=writer_step)
 
         self._progress(batch_idx, epoch, metrics=self.valid_metrics, mode=mode, print_summary=True)
 
@@ -153,9 +151,9 @@ class Trainer(BaseTrainer):
             check_dir(self.checkpoint_dir)
             self.checkpointer(epoch, validation_loss)
             self.lr_scheduler.step(validation_loss)
-            # if self.do_test:
-            #     self.logger.info("!" * 10, "   TESTING   ", "!" * 10)
-            #     self.predict(epoch)
+            if self.do_test:
+                self.logger.info(f"{'!' * 10}    VALIDATION   , {'!' * 10}")
+                self.predict(epoch)
 
     def predict(self, epoch):
         """

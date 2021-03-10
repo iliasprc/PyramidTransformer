@@ -9,6 +9,14 @@ from data_loader.loader_utils import read_autsl_csv
 
 
 def data_generators(config):
+    """
+
+    Args:
+        config ():
+
+    Returns:
+
+    """
     test_params = {'batch_size': 1,
                    'shuffle': False,
                    'num_workers': 2}
@@ -22,7 +30,7 @@ def data_generators(config):
                     'num_workers': config.dataloader.train.num_workers,
                     'pin_memory': True}
 
-    print('dataset_config \n', config)
+
 
     train_prefix = "train"
     validation_prefix = "val"
@@ -38,6 +46,14 @@ def data_generators(config):
 
 
 def RGBD_generators(config):
+    """
+
+    Args:
+        config (): configuration dictionary
+
+    Returns:
+
+    """
     test_params = {'batch_size': 1,
                    'shuffle': False,
                    'num_workers': 2}

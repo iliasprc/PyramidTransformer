@@ -36,10 +36,9 @@ trainer:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets/
+    input_data: data/
     name: AUTSL # dataset name
     modality: depth # type of modality
-    images_path: challenge/ # data directory
     classes: 226 # number of classes
     normalize: True # mean, std normalization
     padding : True # pad videos

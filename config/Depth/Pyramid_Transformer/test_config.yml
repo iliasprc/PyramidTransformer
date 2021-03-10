@@ -24,7 +24,7 @@ tester:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/iliask/Desktop/ilias/datasets/ # data directory
+    input_data: data/ # data directory
     name: AUTSL # dataset name
     modality: depth # type of modality
     classes: 226 # number of classes

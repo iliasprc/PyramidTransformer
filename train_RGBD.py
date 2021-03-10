@@ -9,7 +9,7 @@ import datetime
 import os
 import random
 import shutil
-
+import sys
 
 import numpy as np
 import torch
@@ -22,8 +22,7 @@ from models.model_utils import RGBD_model
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer_rgbd import TrainerRGBD
 from utils.logger import Logger
-from utils.util import arguments,getopts
-import sys
+from utils.util import arguments, getopts
 
 config_file = 'config/RGBD/trainer_RGBD_config.yml'
 
@@ -66,7 +65,7 @@ def main():
 
     log.info(f'CUDNN VERSION:{torch.backends.cudnn.version()}')
     log.info(f'Number CUDA Devices: {torch.cuda.device_count()}')
-
+    ## Reproducibility seeds
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
     random.seed(config.seed)
@@ -78,29 +77,28 @@ def main():
 
     model = RGBD_model(config, len(classes))
 
-    log.info(f"{model}")
     log.info(f'{len(classes)}')
     use_cuda = torch.cuda.is_available()
 
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device {device}')
-    #
-    print('LOAD RGB CPKT')
-    pth_file, _ = load_checkpoint(
-        config.rgb_cpkt,
-        model.rgb_encoder, strict=True, load_seperate_layers=False)
-    print('LOAD DEPTH CPKT')
-    pth_file, _ = load_checkpoint(
-       config.depth_cpkt,
-        model.depth_encoder, strict=False, load_seperate_layers=False)
-
     if torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
 
-        model = torch.nn.DataParallel(model)  # .cuda()
+        model = torch.nn.DataParallel(model)
+    if config.load:
+        log.info(f'LOAD RGB CPKT')
+        pth_file, _ = load_checkpoint(
+            config.rgb_cpkt,
+            model.rgb_encoder, strict=True, load_seperate_layers=False)
+        log.info(f'LOAD DEPTH CPKT')
+        pth_file, _ = load_checkpoint(
+            config.depth_cpkt,
+            model.depth_encoder, strict=False, load_seperate_layers=False)
+
     model.to(device)
     optimizer, scheduler = select_optimizer(model, config['model'])
-
+    log.info(f"{model}")
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     trainer = TrainerRGBD(config, model=model, optimizer=optimizer,
                           data_loader=training_generator, writer=writer, logger=log,

@@ -1,5 +1,4 @@
 trainer:
-  input_data: /home/papastrat/Desktop/ilias/datasets/ # path of input data
   cwd: /home/papastrat/PycharmProjects/PyramidTransformer # working directory
   logger: SLR_challenge # logger name
   epochs: 30 # number of training epochs
@@ -37,7 +36,7 @@ trainer:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets/challenge
+    input_data: data/ # path of input data
     name: AUTSL # dataset name
     modality: depth # type of modality
     classes: 226 # number of classes

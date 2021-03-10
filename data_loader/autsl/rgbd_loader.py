@@ -38,7 +38,7 @@ class AUTSL_RGBD(Base_dataset):
             self.modal = 'color'
         else:
             self.modal = 'depth'
-        self.list_rgb = sorted(glob.glob(os.path.join(config.cwd, f'challenge/train/*{self.modal}.mp4')))
+        self.list_rgb = sorted(glob.glob(os.path.join(config.cwd, f'train/*{self.modal}.mp4')))
 
         train_paths, train_labels, _ = read_autsl_labelsv2(
             './data_loader/autsl/train_labels.csv')
@@ -54,18 +54,18 @@ class AUTSL_RGBD(Base_dataset):
             # print(os.path.join(args.input_data, f'challenge/val/*{self.modal}.mp4'))
             # print(glob.glob(os.path.join(args.input_data, f'challenge/val/*color.mp4')))
             self.validation_rgb = natural_sort(
-                glob.glob(os.path.join(self.config.dataset.input_data, f'challenge/test/*color.mp4')))
+                glob.glob(os.path.join(self.config.dataset.input_data, f'test/*color.mp4')))
             self.validation_depth = natural_sort(
-                glob.glob(os.path.join(self.config.dataset.input_data, f'challenge/test/*depth.mp4')))
+                glob.glob(os.path.join(self.config.dataset.input_data, f'test/*depth.mp4')))
             # self.validation_depth
             self.list_IDs = []
             for path in self.validation_depth:
-                label = path.replace(self.config.dataset.input_data, '').replace('challenge/test/', '').replace(
+                label = path.replace(self.config.dataset.input_data, '').replace('test/', '').replace(
                     f'_depth.mp4', '')
                 self.list_IDs.append(path.replace(f'_depth.mp4', ''))
                 self.labels.append(label)
 
-        print(f'Samples {len(self.list_IDs)} {self.mode} modality {self.modal}')
+        # print(f'Samples {len(self.list_IDs)} {self.mode} modality {self.modal}')
 
     def __len__(self):
         return len(self.list_IDs)
@@ -77,20 +77,20 @@ class AUTSL_RGBD(Base_dataset):
 
             rgb_vid_name = f'{self.list_IDs[index]}_color.mp4'
             depth_vid_name = f'{self.list_IDs[index]}_depth.mp4'
-            rgb_tensor = load_video(os.path.join(self.config.dataset.input_data, 'challenge/train', rgb_vid_name),
+            rgb_tensor = load_video(os.path.join(self.config.dataset.input_data, 'train', rgb_vid_name),
                                     dim=self.dim,
                                     time_steps=self.seq_length, augmentation=aug)
-            depth_tensor = load_video(os.path.join(self.config.dataset.input_data, 'challenge/train', depth_vid_name),
+            depth_tensor = load_video(os.path.join(self.config.dataset.input_data, 'train', depth_vid_name),
                                       dim=self.dim,
                                       time_steps=self.seq_length, augmentation=aug)
         elif self.mode == 'val':
             aug = 'test'
             rgb_vid_name = f'{self.list_IDs[index]}_color.mp4'
             depth_vid_name = f'{self.list_IDs[index]}_depth.mp4'
-            rgb_tensor = load_video(os.path.join(self.config.dataset.input_data, 'challenge/val', rgb_vid_name),
+            rgb_tensor = load_video(os.path.join(self.config.dataset.input_data, 'val', rgb_vid_name),
                                     dim=self.dim,
                                     time_steps=self.seq_length, augmentation=aug)
-            depth_tensor = load_video(os.path.join(self.config.dataset.input_data, 'challenge/val', depth_vid_name),
+            depth_tensor = load_video(os.path.join(self.config.dataset.input_data, 'val', depth_vid_name),
                                       dim=self.dim,
                                       time_steps=self.seq_length, augmentation=aug)
 

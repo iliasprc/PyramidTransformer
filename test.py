@@ -11,7 +11,7 @@ import random
 import shutil
 import sys
 
-# import configargparse
+
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
@@ -64,9 +64,7 @@ def main():
 
     log.info(f'CUDNN VERSION:{torch.backends.cudnn.version()}')
     log.info(f'Number CUDA Devices: {torch.cuda.device_count()}')
-    # dd/mm/YY H:M:S
-
-    # log.info("date and time =", dt_string)
+    ## Reproducibility seeds
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
     random.seed(config.seed)
@@ -83,23 +81,21 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device: {device}')
 
-    # log.info(f"{model}")
-    log.info(f'{len(classes)}')
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
-            print("Let's use", torch.cuda.device_count(), "GPUs!")
+            log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
 
         model = torch.nn.DataParallel(model)
         model.to(device)
 
     if (config.load):
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
-
+    log.info(f"{model}")
     tester = Tester(config, model=model,
                     data_loader=training_generator, writer=writer, logger=log,
                     valid_data_loader=val_generator, test_data_loader=test_generator,
                     checkpoint_dir=cpkt_fol_name)
-    validation_loss = tester._valid_epoch(0, 'validation', val_generator)
+    validation_loss = tester._valid_epoch(0, 'val', val_generator)
     tester.predict()
 
 
