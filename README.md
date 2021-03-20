@@ -1,10 +1,10 @@
-# Sign Language Video Pyramid Transformer (SLVPT)
+# Video Pyramid Transformer (VPT)
 Code for CVPR2021 ChaLearn Challenge of ISLR
 
 ## Abstract
 
 ## Contents
-* [Sign Language Video Pyramid Transformer](#pytorch-template-project)
+* [Video Pyramid Transformer](#pytorch-template-project)
     * [Abstract](#abstract)
 	* [Requirements](#requirements)
 	* [Features](#features)
