@@ -1,4 +1,6 @@
 # Sign Language Video Pyramid Transformer (SLVPT)
+Code for CVPR2021 ChaLearn Challenge of ISLR
+
 ## Abstract
 
 ## Contents
@@ -251,8 +253,8 @@ Link to google drive with pretrained models
 
 | Model                                                    | Backbone | Pretrain     | #Frame | Param. |  GFLOPs |   Validation Acc (%) |    Test Acc (%)      |                                                        Weights                                                               |
 |----------------------------------------------------------|:------------:|:--------:|:------:|:------:|:-------:|:--------------------:|:--------------------:|:---------------------------------------------------------------------------------------------------------------------------------:|
-|[RGB Video Pyramid Transformer]()                         |[ir-CSN-152]()| [**IG-65M**](https://research.fb.com/wp-content/uploads/2019/05/Large-scale-weakly-supervised-pre-training-for-video-action-recognition.pdf)    | 64     |        |          |                      |                     |                                                                          |
-|[RGBD Video  Pyramid Transformer]()                       |[ir-CSN-152]()| [**IG-65M**](https://research.fb.com/wp-content/uploads/2019/05/Large-scale-weakly-supervised-pre-training-for-video-action-recognition.pdf) | 64     |        |          |                      |                     |                                                                          |
+|[RGB Video Pyramid Transformer]()                         |[ir-CSN-152]()| [**IG-65M**](https://research.fb.com/wp-content/uploads/2019/05/Large-scale-weakly-supervised-pre-training-for-video-action-recognition.pdf)    | 64     |        |          |            90.87          |             90.73       |                                                                          |
+|[RGBD Video  Pyramid Transformer]()                       |[ir-CSN-152]()| [**IG-65M**](https://research.fb.com/wp-content/uploads/2019/05/Large-scale-weakly-supervised-pre-training-for-video-action-recognition.pdf) | 64     |        |          |            93.2800          |           	91.7200           |                                                                          |
 
 ## License
 This project is licensed under the MIT License. See  LICENSE for more details
