@@ -1,0 +1,20 @@
+dataset:
+  name: gsl_isolated
+  modality: RGB
+  images_path: Greek_isolated/GSL_isol/
+  features_path: None
+  classes: 310
+  normalize: True
+  padding : True
+  dim: [224,224]
+  img_type: jpg
+  train:
+    seq_length: 25
+    augmentation: True
+  val:
+    seq_length: 25
+    augmentation: False
+  test:
+    seq_length: 25
+    augmentation: False
+

@@ -74,6 +74,9 @@ class AUTSL(Base_dataset):
             vid_tensor = load_video(os.path.join(self.config.dataset.input_data, 'train', vid_name),
                                     dim=self.dim,
                                     time_steps=self.seq_length, augmentation=aug)
+            target_label = torch.LongTensor([int(self.labels[index])])
+
+            return vid_tensor, target_label
         elif self.mode == 'val':
             aug = 'test'
             #print(self.list_IDs[index])
@@ -89,6 +92,4 @@ class AUTSL(Base_dataset):
             vid_tensor = load_video(self.list_IDs[index], dim=self.dim,
                                     time_steps=self.seq_length, augmentation=aug)
             return vid_tensor, self.labels[index]
-        target_label = torch.LongTensor([int(self.labels[index])])
 
-        return vid_tensor, target_label

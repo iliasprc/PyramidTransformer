@@ -42,6 +42,23 @@ def arguments():
     return args
 
 
+def cslr_arguments():
+    parser = argparse.ArgumentParser(description='CSLR')
+
+    parser.add_argument('-c', type=str, default='config', metavar='config',
+                        help='config file path')
+    parser.add_argument('--modality', type=str, default='RGB', choices=['RGB', 'Depth', 'RGBD'],help='modality yo use for experiments')
+    parser.add_argument('--model', type=str, default='IR_CSN_152', choices=['IR_CSN_152', 'Pyramid_Transformer'])
+    parser.add_argument('--gpu', type=str, default='0,1')
+    parser.add_argument('--load', type=bool, default=False,help='load pretrained checkpoint')
+    parser.add_argument('--pretrained_cpkt', type=str,
+                        default='',
+                        help='checkpoint file')
+    args = parser.parse_args()
+
+    return args
+
+
 def getopts(argv):
     opts = {}  # Empty dictionary to store key-value pairs.
     while argv:  # While there are arguments left to parse...

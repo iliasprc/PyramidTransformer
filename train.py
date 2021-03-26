@@ -19,7 +19,7 @@ from omegaconf import OmegaConf
 from torch.utils.tensorboard import SummaryWriter
 
 from data_loader.dataset import data_generators
-from models.model_utils import SLR_video_encoder
+from models.model_utils import ISLR_video_encoder
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer import Trainer
 from utils.logger import Logger
@@ -79,7 +79,7 @@ def main():
     cudnn.deterministic = True
     training_generator, val_generator, test_generator, classes = data_generators(config)
 
-    model = SLR_video_encoder(config, len(classes))
+    model = ISLR_video_encoder(config, len(classes))
 
     use_cuda = torch.cuda.is_available()
 

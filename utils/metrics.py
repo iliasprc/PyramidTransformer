@@ -224,22 +224,7 @@ def wer_alignment(output, target, id2w):
     return label_of_out, temp_wer, sentence, C, S, I, D
 
 
-def old_word_error_rate(output, target, id2w):
-    ### requires jiwer
-    probs = torch.nn.functional.softmax(output, dim=2)
-    pred = probs.argmax(dim=2, keepdim=True).squeeze(1).squeeze(1).cpu().numpy()
-    ref = ''
-    refs = target.squeeze().cpu().numpy()
-    if (target.size(1) == 1):
-        ref += id2w[int(refs)] + ' '
-    for i in range(target.size(1)):
-        ref += id2w[refs[i]] + ' '
 
-    s = ''
-    s = greedy_decode(id2w, pred, output.size(0), ' ')
-    temp_wer = min(1, wer(ref, s))
-
-    return temp_wer, s
 
 
 def accuracyv1(output, target, topk=(1,)):

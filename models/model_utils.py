@@ -37,7 +37,21 @@ model_urls = {
 }
 
 
-def SLR_video_encoder(config, N_classes):
+
+def CSLR_video_encoder(config, N_classes):
+    from models.cslr.cslr_ir_csn_152 import cslr_ir_csn_152
+
+    if config.model.name == 'IR_CSN_152':
+        return cslr_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
+    # elif config.model.name == 'ECA_IR_CSN_152':
+    #     return eca_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
+    #                           num_classes=N_classes)
+    #
+    # elif config.model.name == 'Pyramid_Transformer':
+    #     return ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
+    #                                   num_classes=N_classes)
+
+def ISLR_video_encoder(config, N_classes):
     if config.model.name == 'IR_CSN_152':
         return ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
     elif config.model.name == 'ECA_IR_CSN_152':

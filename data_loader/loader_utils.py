@@ -216,7 +216,7 @@ def video_tensor_shuffle(x):
     return x
 
 
-def video_transforms(img, bright, cont, h, resized_crop=None, augmentation='test', normalize=True, to_flip=False):
+def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=True, normalize=True, to_flip=False):
     """
     Image augmentation function
     Args:
@@ -231,7 +231,7 @@ def video_transforms(img, bright, cont, h, resized_crop=None, augmentation='test
     Returns:
 
     """
-    if augmentation == 'train':
+    if augmentation:
         t = transforms.ToTensor()
         if to_flip:
             img = transforms.functional.hflip(img)
@@ -489,4 +489,6 @@ class VideoRandomResizedCrop(object):
             PIL Image: Randomly cropped and resized image.
         """
         i, j, h, w = self.parameters
-        return transforms.functional.resized_crop(img, i, j, h, w, self.size, self.interpolation)
+        img =  transforms.functional.resized_crop(img, i, j, h, w, self.size, self.interpolation)
+
+        return img
