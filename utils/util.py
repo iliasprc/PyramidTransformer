@@ -187,8 +187,9 @@ class MetricTracker:
     def update(self, key, value, n=1, writer_step=1):
         if self.writer is not None:
             self.writer.add_scalar(self.mode + key, value, writer_step)
-        self._data.total[key] += value
-        self._data.counts[key] += n
+        self._data.total[key] += float(value)
+        self._data.counts[key] += float(n)
+        #print( value,n)
         self._data.average[key] = self._data.total[key] / self._data.counts[key]
 
     def update_all_metrics(self, values_dict, n=1, writer_step=1):

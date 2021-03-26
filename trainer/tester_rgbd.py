@@ -80,13 +80,14 @@ class TesterRGBD(BaseTrainer):
                 self.valid_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()),
                                           n=target.size(0), writer_step=writer_step)
                 # {'loss': loss.item(), 'acc': acc}, writer_step=writer_step)
+
         self._progress(batch_idx, epoch, metrics=self.valid_metrics, mode=mode, print_summary=True)
 
         val_loss = self.valid_metrics.avg('loss')
 
         return val_loss
 
-    def predict(self):
+    def predict(self,loader):
         """
          Inference
 
@@ -98,7 +99,7 @@ class TesterRGBD(BaseTrainer):
 
         predictions = []
         with torch.no_grad():
-            for batch_idx, data in enumerate(self.test_data_loader):
+            for batch_idx, data in enumerate(loader):
                 rgb_tensor, depth_tensor, y = data
                 rgb_tensor = rgb_tensor.to(self.device)
                 depth_tensor = depth_tensor.to(self.device)
@@ -108,7 +109,9 @@ class TesterRGBD(BaseTrainer):
 
                 maxes, prediction = torch.max(output, 1)  # get the index of the max log-probability
 
-                predictions.append(f"{target[0]},{prediction.cpu().numpy()[0]}")
+                for i in range(data.shape[0]):
+
+                    predictions.append(f"{target[i]},{prediction.cpu().numpy()[i]}")
 
         pred_name = os.path.join(self.checkpoint_dir, f'predictions_.csv')
         write_csv(predictions, pred_name)

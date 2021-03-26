@@ -7,7 +7,7 @@ trainer:
   gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: False # load pretrained checkpoint
-  gradient_accumulation: 16 # gradient accumulation steps
+  gradient_accumulation: 64 # gradient accumulation steps
   pretrained_cpkt: best_model.pth
   log_interval: 1000 # print statistics every log_interval
   model:
@@ -24,13 +24,13 @@ trainer:
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
-      batch_size: 4 # batch size
-      shuffle: True # shuffle samples after every epoch
-      num_workers: 4 # number of thread for dataloader
+      batch_size: 2 # batch size
+      shuffle: False # shuffle samples after every epoch
+      num_workers: 2 # number of thread for dataloader1
     val:
-      batch_size: 4
+      batch_size: 2
       shuffle: False
-      num_workers: 4
+      num_workers: 2
     test:
       batch_size: 1
       shuffle: False
@@ -44,11 +44,11 @@ trainer:
     padding : True # pad videos
     dim: [224,224] # frame dimension
     train:
-      seq_length: 64 # number of frames for each video
+      seq_length: 32 # number of frames for each video
       augmentation: True # do augmentation to video
     val:
-      seq_length: 64
+      seq_length: 32
       augmentation: False
     test:
-      seq_length: 64
+      seq_length: 32
       augmentation: False

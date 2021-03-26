@@ -61,7 +61,10 @@ def showgradients(model):
         print("GRADS= \n", param.grad)
 
 
-def save_checkpoint_slr(model, optimizer, epoch, wer, checkpoint, name, save_seperate_layers=False, is_best=False):
+
+
+
+def save_checkpoint(model, optimizer, loss, checkpoint_dir, name, save_seperate_layers=False):
     state = {}
     if (save_seperate_layers):
         for name1, module in model.named_children():
@@ -70,7 +73,28 @@ def save_checkpoint_slr(model, optimizer, epoch, wer, checkpoint, name, save_sep
 
     state['model_dict'] = model.state_dict()
     state['optimizer_dict'] = optimizer.state_dict()
-    state['wer'] = str(wer)
+    state['loss'] = str(loss)
+    filepath = os.path.join(checkpoint_dir, name + '.pth')
+
+
+
+    if not os.path.exists(checkpoint_dir):
+        print("Checkpoint Directory does not exist! Making directory {}".format(checkpoint_dir))
+        os.mkdir(checkpoint_dir)
+
+    torch.save(state, filepath, _use_new_zipfile_serialization=False)
+
+
+def save_checkpoint_slr(model, optimizer, epoch, loss, checkpoint, name, save_seperate_layers=False, is_best=False):
+    state = {}
+    if (save_seperate_layers):
+        for name1, module in model.named_children():
+            # print(name1)
+            state[name1 + '_dict'] = module.state_dict()
+
+    state['model_dict'] = model.state_dict()
+    state['optimizer_dict'] = optimizer.state_dict()
+    state['loss'] = str(loss)
     state['epoch'] = str(epoch)
     filepath = os.path.join(checkpoint, name + '.pth')
 
@@ -93,6 +117,7 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
         optimizer: (torch.optim) optional: resume optimizer from checkpoint
     """
     checkpoint1 = torch.load(checkpoint, map_location='cpu')
+    print(checkpoint1.keys())
     pretrained_dict = checkpoint1['model_dict']
     model_dict = model.state_dict()
     print(pretrained_dict.keys())
@@ -101,8 +126,8 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     # # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
     pretrained_dictnew = {}
     for k, v in pretrained_dict.items():
-        if 'module.' in k:
-            k = k[7:]
+        # if 'module.' in k:
+        #     k = k[7:]
         pretrained_dictnew[k] = v
     # # # for k, v in pretrained_dict.items():
     # # #     k = k.strip('model.')

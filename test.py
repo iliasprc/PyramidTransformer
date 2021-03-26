@@ -25,7 +25,7 @@ from trainer.tester import Tester
 from utils import getopts, arguments
 from utils.logger import Logger
 
-
+from models.model_utils import save_checkpoint, select_optimizer
 def main():
     now = datetime.datetime.now()
 
@@ -91,12 +91,18 @@ def main():
     if (config.load):
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
     log.info(f"{model}")
+    log.info(cpkt_fol_name)
+    optimizer, scheduler = select_optimizer(model, config['model'], pth_file)
     tester = Tester(config, model=model,
                     data_loader=training_generator, writer=writer, logger=log,
                     valid_data_loader=val_generator, test_data_loader=test_generator,
                     checkpoint_dir=cpkt_fol_name)
-    validation_loss = tester._valid_epoch(0, 'val', val_generator)
-    tester.predict()
+
+
+    #validation_loss = tester._valid_epoch(0, 'val', val_generator)
+    #save_checkpoint(model,optimizer,validation_loss,cpkt_fol_name,'model')
+    tester.predict(val_generator)
+    #tester.predict(test_generator)
 
 
 if __name__ == '__main__':

@@ -25,6 +25,7 @@ from utils.logger import Logger
 config_file = 'config/RGBD/tester_RGBD_config.yml'
 
 
+from models.model_utils import save_checkpoint, select_optimizer
 def main():
     now = datetime.datetime.now()
 
@@ -77,19 +78,23 @@ def main():
         model = torch.nn.DataParallel(model)
 
     pth_file, _ = load_checkpoint(
-        config.pretrained_cpkt, strict=True)
+        config.pretrained_cpkt,model, strict=True)
 
     model.to(device)
 
     log.info(f"{model}")
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
+    optimizer, scheduler = select_optimizer(model, config['model'], pth_file)
     tester = TesterRGBD(config, model=model,
                         data_loader=training_generator, writer=writer, logger=log,
                         valid_data_loader=val_generator, test_data_loader=test_generator,
 
                         checkpoint_dir=cpkt_fol_name)
 
-    tester.predict(0)
+    validation_loss = tester._valid_epoch(0, 'val', val_generator)
+    save_checkpoint(model,optimizer,validation_loss,cpkt_fol_name,'model')
+    tester.predict()
+
 
 
 if __name__ == '__main__':

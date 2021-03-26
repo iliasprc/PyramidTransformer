@@ -17,7 +17,7 @@ def data_generators(config):
     Returns:
 
     """
-    test_params = {'batch_size': 1,
+    test_params = {'batch_size': config.dataloader.test.batch_size,
                    'shuffle': False,
                    'num_workers': 2}
     val_params = {'batch_size': config.dataloader.val.batch_size,
@@ -54,10 +54,10 @@ def RGBD_generators(config):
     Returns:
 
     """
-    test_params = {'batch_size': 1,
+    test_params = {'batch_size': 4,
                    'shuffle': False,
                    'num_workers': 2}
-    val_params = {'batch_size': config.dataloader.val.batch_size,
+    val_params = {'batch_size': 4,
                   'shuffle': config.dataloader.val.shuffle,
                   'num_workers': config.dataloader.val.num_workers,
                   'pin_memory': True}

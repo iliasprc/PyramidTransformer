@@ -86,7 +86,7 @@ class Trainer(BaseTrainer):
             #         'loss': loss.item(), 'acc': acc,
             #     }, writer_step=writer_step)
             self.train_metrics.update(key='loss', value=loss.item(), n=1, writer_step=writer_step)
-            self.train_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()),
+            self.train_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.squeeze(-1).cpu().numpy()),
                                       n=target.size(0), writer_step=writer_step)
 
             self._progress(batch_idx, epoch, metrics=self.train_metrics, mode='train')
@@ -119,13 +119,13 @@ class Trainer(BaseTrainer):
                 writer_step = (epoch - 1) * len(loader) + batch_idx
 
                 prediction = torch.max(output, 1)
-                acc = np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()) / target.size(0)
+                acc = np.sum(prediction[1].cpu().numpy() == target.squeeze(-1).cpu().numpy()) / target.size(0)
 
                 # self.valid_metrics.update_all_metrics(
                 #     {'loss': loss.item(), 'acc': acc}, writer_step=writer_step)
 
                 self.valid_metrics.update(key='loss', value=loss.item(), n=1, writer_step=writer_step)
-                self.valid_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()),
+                self.valid_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.squeeze(-1).cpu().numpy()),
                                           n=target.size(0), writer_step=writer_step)
 
         self._progress(batch_idx, epoch, metrics=self.valid_metrics, mode=mode, print_summary=True)
@@ -151,9 +151,9 @@ class Trainer(BaseTrainer):
             check_dir(self.checkpoint_dir)
             self.checkpointer(epoch, validation_loss)
             self.lr_scheduler.step(validation_loss)
-            if self.do_test:
-                self.logger.info(f"{'!' * 10}    VALIDATION   , {'!' * 10}")
-                self.predict(epoch)
+            # if self.do_test:
+            #     self.logger.info(f"{'!' * 10}    VALIDATION   , {'!' * 10}")
+            #     self.predict(epoch)
 
     def predict(self, epoch):
         """

@@ -1,4 +1,4 @@
-trainer:
+tester:
   cwd: /home/papastrat/PycharmProjects/PyramidTransformer # working directory
   logger: SLR_challenge # logger name
   epochs: 30 # number of training epochs
@@ -8,8 +8,7 @@ trainer:
   save: True # save checkpoint
   load: False # load pretrained checkpoint
   gradient_accumulation: 16 # gradient accumulation steps
-  rgb_cpkt: /root/PyramidTransformer/checkpoints/model_Pyramid_Transformer/dataset_AUTSL/date_06_03_2021_13.09.07/best_model_epoch_4.pth
-  depth_cpkt: /root/PyramidTransformer/checkpoints/trained/dept_pyramid_transformer_VAL_90.52/date_27_02_2021_23.12.18/best_model.pth
+  pretrained_cpkt: /home/iliask/PycharmProjects/SLVTP/checkpoints/trained_cpkts/RGBD_best_93.28/best_model_epoch_2.pth
   log_interval: 1000 # print statistics every log_interval
   model:
     name: RGBD_Transformer # model name

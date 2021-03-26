@@ -60,18 +60,22 @@ class Tester(BaseTrainer):
         self.model.eval()
         self.valid_sentences = []
         self.valid_metrics.reset()
-
+        predictions = []
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(loader):
                 data = data.to(self.device)
 
-                target = target.long().to(self.device)
+                #target = target.long().to(self.device)
 
-                output, loss = self.model(data, target)
+                output, loss = self.model(data)#, target)
                 loss = loss.mean()
                 writer_step = (epoch - 1) * len(loader) + batch_idx
 
                 prediction = torch.max(output, 1)
+                for i in range(data.shape[0]):
+
+                    predictions.append(f"{target[i]},{prediction[1].cpu().numpy()[i]}")
+                    #print(f"{target[i]},{prediction.cpu().numpy()[i]}")
                 acc = np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()) / target.size(0)
 
                 self.valid_metrics.update(key='loss',value=loss.item(),n=1,writer_step=writer_step)
@@ -79,14 +83,16 @@ class Tester(BaseTrainer):
 
         self._progress(batch_idx, epoch, metrics=self.valid_metrics, mode=mode, print_summary=True)
 
-
+        time = str(batch_idx)
+        pred_name = os.path.join(self.checkpoint_dir, f'predictions_{time}.csv')
+        write_csv(predictions, pred_name)
         val_loss = self.valid_metrics.avg('loss')
 
 
         return val_loss
 
 
-    def predict(self):
+    def predict(self,loader):
         """
         Inference
         Args:
@@ -98,17 +104,37 @@ class Tester(BaseTrainer):
         self.model.eval()
 
         predictions = []
+        correct = 0
+        total = 0
         with torch.no_grad():
-            for batch_idx, (data, target) in enumerate(self.test_data_loader):
+            for batch_idx, (data, path,target) in enumerate(loader):
                 data = data.to(self.device)
 
                 logits = self.model(data, None)
-
+             #   print(data.shape)
+                logits = logits.cpu()
                 maxes, prediction = torch.max(logits, 1)  # get the index of the max log-probability
+                print(prediction.shape,target.shape)
+                print(prediction.cpu().numpy() == target.squeeze(-1).cpu().numpy())
+                s = np.sum(prediction.cpu().numpy() == target.cpu().numpy())
+                if s>4:
+                    print(prediction.cpu().numpy() == target.cpu().numpy())
+                    print(s)
+                    print('GAMW TH PANAGIA ')
+               # print(target,'\n')
+                l = list(zip(target.cpu().numpy()[0],prediction.cpu().numpy()))
+                #print(l)
+                #print(np.sum(prediction.cpu().numpy() == target.cpu().numpy()))
+                correct +=float(np.sum(prediction.cpu().numpy() == target.cpu().numpy()))
+                total+= float(target.size(0))
+                self.logger.info(f"{batch_idx}  {correct/total}  {correct} {total} ")
+                for i in range(data.shape[0]):
 
-                predictions.append(f"{target[0]},{prediction.cpu().numpy()[0]}")
+                    predictions.append(f"{path[i]},{prediction.cpu().numpy()[i]}")
+                    #print(f"{path[i]},{prediction.cpu().numpy()[i]}")
         self.logger.info('Inference done')
-        pred_name = os.path.join(self.checkpoint_dir, f'predictions.csv')
+        time = str(batch_idx)
+        pred_name = os.path.join(self.checkpoint_dir, f'predictions_{time}.csv')
         write_csv(predictions, pred_name)
         return predictions
 
@@ -124,3 +150,4 @@ class Tester(BaseTrainer):
         elif print_summary:
             self.logger.info(
                 f'{mode} summary  Epoch: [{epoch}/{self.epochs}]\t {metrics_string}')
+
