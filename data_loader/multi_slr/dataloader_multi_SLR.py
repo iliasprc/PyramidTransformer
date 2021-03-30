@@ -10,15 +10,32 @@ import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
-
+from base.base_data_loader import Base_dataset
 from data_loader.loader_utils import class2indextensor
-from data_loader.loader_utils import pad_video, video_transforms, sampling, VideoRandomResizedCrop, read_gsl_isolated
+from data_loader.loader_utils import pad_video, video_transforms, sampling, VideoRandomResizedCrop
 
 
-train_filepath = "../files/multi_slr/train_mslr1.txt"
-dev_filepath = "../files/multi_slr/test_mslr1.txt"
+
+def read_files(csv_path):
+    paths, glosses_list = [], []
+    classes = []
+    data = open(csv_path, 'r').read().splitlines()
+    for item in data:
+        if (len(item.split('|')) < 2):
+            print("\n {} {} {} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n".format(item, path, csv_path))
+        path, gloss = item.split('|')
+
+        paths.append(path)
+
+        glosses_list.append(gloss)
+
+    return paths, glosses_list
+
+
+train_filepath = "data_loader/multi_slr/files/train_mslr1.txt"
+dev_filepath = "data_loader/multi_slr/files/test_mslr1.txt"
 train_prefix = 'train'
-test_prefix = 'test'
+test_prefix = 'val'
 
 #
 # torch.manual_seed(SEED)
@@ -28,8 +45,9 @@ test_prefix = 'test'
 # torch.cuda.manual_seed(SEED)
 
 
-class Multi_SLR(Dataset):
-    def __init__(self, args, mode, classes, dim=(224, 224)):
+class Multi_SLR(Base_dataset):
+    def __init__(self, config, mode,classes ):
+        super(Multi_SLR,self).__init__( config, mode,classes)
         """
 
         Args:
@@ -43,21 +61,21 @@ class Multi_SLR(Dataset):
 
         # print(self.bbox)
         if mode == train_prefix:
-            self.list_video_paths, self.list_glosses = read_gsl_isolated(train_filepath)
+            self.list_video_paths, self.list_glosses = read_files(os.path.join(self.config.cwd,train_filepath))
             print("{} {} instances  ".format(len(self.list_video_paths), mode))
             self.mode = mode
         elif mode == test_prefix:
-            self.list_video_paths, self.list_glosses = read_gsl_isolated(dev_filepath)
+            self.list_video_paths, self.list_glosses = read_files(dev_filepath)
             # print(self.list_video_paths)
             print("{} {} instances  ".format(len(self.list_video_paths), mode))
             self.mode = mode
 
 
-        self.root_path = args.input_data
-        self.seq_length = args.seq_length
-        self.dim = dim
-        self.normalize = args.normalize
-        self.padding = args.padding
+        self.data_path = self.config.dataset.input_data
+        self.dim = self.config.dataset.dim
+        self.seq_length = self.config.dataset[self.mode]['seq_length']
+        self.normalize = self.config.dataset.normalize
+        self.padding = self.config.dataset.padding
 
     def __len__(self):
         return len(self.list_video_paths)
@@ -66,7 +84,7 @@ class Multi_SLR(Dataset):
 
 
         y = class2indextensor(classes=self.classes, target_label=self.list_glosses[index])
-
+        #print(self.list_glosses[index],y)
         x = self.load_video_sequence(index, time_steps=self.seq_length, dim=self.dim,
                                      augmentation='test', padding=self.padding, normalize=self.normalize,
                                      img_type='jpg')
@@ -76,7 +94,7 @@ class Multi_SLR(Dataset):
     def load_video_sequence(self, index, time_steps, dim=(224, 224), augmentation='test', padding=False, normalize=True,
                             img_type='png'):
 
-        path = os.path.join(self.root_path,self.list_video_paths[index])
+        path = os.path.join(self.data_path,self.list_video_paths[index])
         #print(path)
         imagespng = sorted(glob.glob(os.path.join(path, '*png' )))
         imagesjpg = sorted(glob.glob(os.path.join(path, '*jpg' )))
@@ -121,22 +139,28 @@ class Multi_SLR(Dataset):
             frame = Image.open(img_path)
             frame.convert('RGB')
 
+            ## CROP BOUNDING BOX
+            if 'Greek_isolated' in path:
+                crop_size = 120
+                frame = np.array(frame)
+                frame = frame[:, crop_size:648 - crop_size]
+                frame = Image.fromarray(frame)
             if (augmentation == 'train'):
 
                 ## training set DATA AUGMENTATION
 
                 frame = frame.resize(r_resize)
 
-                img_tensor = video_transforms(img=frame, i=i, j=j, bright=brightness, cont=contrast, h=hue, dim=dim,
+                img_tensor = video_transforms(img=frame,  bright=brightness, cont=contrast, h=hue,
                                               resized_crop=t1,
-                                              augmentation='train',
+                                              augmentation=True,
                                               normalize=normalize)
                 img_sequence.append(img_tensor)
             else:
                 # TEST set  NO DATA AUGMENTATION
                 frame = frame.resize(dim)
 
-                img_tensor = video_transforms(img=frame, i=i, j=j, bright=0, cont=0, h=0, dim=dim, augmentation='test',
+                img_tensor = video_transforms(img=frame, bright=0, cont=0, h=0,  augmentation=False,
                                               normalize=normalize)
                 img_sequence.append(img_tensor)
         pad_len = time_steps - len(images)

@@ -69,8 +69,8 @@ class VideoResNet(nn.Module):
                     nn.init.constant_(m.bn3.weight, 0)
 
     def forward(self, x, y=None):
-        #with torch.no_grad():
-        x = self.stem(x)
+        with torch.no_grad():
+            x = self.stem(x)
 
         x = self.layer1(x)
         x = self.layer2(x)
@@ -199,6 +199,7 @@ class VideoResNet(nn.Module):
         # Flatten the layer to fc
         x = x.flatten(1)
         y_hat = self.fc(x)
+        #print(y_hat.shape,y.squeeze(-1).shape)
         if y!=None:
             loss = F.cross_entropy(y_hat, y.squeeze(-1))
             return y_hat, loss

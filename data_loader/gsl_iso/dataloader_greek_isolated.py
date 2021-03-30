@@ -217,7 +217,7 @@ def read_bounding_box(path):
 
     # bbox.append(a)
     return bbox
-def read_gsl_isolated_classes(path):
+def read_classes_file(path):
     indices, classes = [], []
 
     data = open(path, 'r').read().splitlines()

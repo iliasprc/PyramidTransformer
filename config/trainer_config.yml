@@ -6,7 +6,7 @@ trainer:
   cuda: True # use nvidia gpu
   gpu: 0,1 # id of gpu
   save: True # save checkpoint
-  load: False # load pretrained checkpoint
+  load: True # load pretrained checkpoint
   gradient_accumulation: 8 # gradient accumulation steps
   pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained_cpkts/MS_ASL_100/date_08_03_2021_11.54.49/best_model_epoch_8.pth
   log_interval: 1000 # print statistics every log_interval
@@ -26,7 +26,7 @@ trainer:
     train:
       batch_size: 8 # batch size
       shuffle: False # shuffle samples after every epoch
-      num_workers: 6 # number of thread for dataloader1
+      num_workers: 4 # number of thread for dataloader1
     val:
       batch_size: 8
       shuffle: False

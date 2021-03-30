@@ -25,7 +25,7 @@ from trainer.trainer import Trainer
 from utils.logger import Logger
 from utils.util import arguments, getopts
 
-config_file = 'config/trainer_config.yml'
+config_file = 'config/ISLR/trainer_config.yml'
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
         if 'c' in myargs:
             config_file = myargs['c']
     else:
-        config_file = 'config/trainer_config.yml'
+        config_file = 'config/ISLR/trainer_config.yml'
 
     config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
 
@@ -108,7 +108,7 @@ def main():
 
 
     optimizer, scheduler = select_optimizer(model, config['model'], None)
-
+    log.info(f'{model}')
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     trainer = Trainer(config, model=model, optimizer=optimizer,
                       data_loader=training_generator, writer=writer, logger=log,
