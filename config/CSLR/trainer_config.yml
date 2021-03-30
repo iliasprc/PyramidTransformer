@@ -8,13 +8,13 @@ trainer_cslr:
   save: True # save checkpoint
   load: True # load pretrained checkpoint
   gradient_accumulation: 8 # gradient accumulation steps
-  pretrained_cpkt: /home/iliask/PycharmProjects/SLVTP/checkpoints/trained_cpkts/best_model.pth
+  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained_cpkts/best_model.pth
   log_interval: 1000 # print statistics every log_interval
   model:
     name: IR_CSN_152 # model name
     optimizer: # optimizer configuration
-      type: SGD # optimizer type
-      lr: 1e-2 # learning rate
+      type: Adam # optimizer type
+      lr: 1e-4 # learning rate
       weight_decay: 0.000001 # weight decay
     scheduler: # learning rate scheduler
       type: ReduceLRonPlateau # type of scheduler
@@ -36,8 +36,8 @@ trainer_cslr:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/iliask/Desktop/ilias/datasets/GSL_continuous/
-    name: GSL_SI # dataset name
+    input_data: /home/papastrat/Desktop/ilias/datasets/GSL_continuous/
+    name: GSL_ISO # dataset name
     modality: RGB # type of modality
     classes: 311 # number of classes
     normalize: True # mean, std normalization

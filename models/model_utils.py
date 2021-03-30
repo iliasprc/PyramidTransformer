@@ -40,16 +40,16 @@ model_urls = {
 
 def CSLR_video_encoder(config, N_classes):
     from models.cslr.cslr_ir_csn_152 import cslr_ir_csn_152
+    from models.cslr.i3d import InceptionI3d
 
     if config.model.name == 'IR_CSN_152':
         return cslr_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
-    # elif config.model.name == 'ECA_IR_CSN_152':
-    #     return eca_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
-    #                           num_classes=N_classes)
-    #
-    # elif config.model.name == 'Pyramid_Transformer':
-    #     return ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
-    #                                   num_classes=N_classes)
+    elif config.model.name == 'I3D':
+        return InceptionI3d(num_classes=100)
+    elif config.model.name == 'IR_CSN_152_Transformer':
+        from models.cslr.cslr_pyramid_transformer import cslr_ir_csn_152_transformer
+        return cslr_ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
+                                      num_classes=N_classes)
 
 def ISLR_video_encoder(config, N_classes):
     if config.model.name == 'IR_CSN_152':
@@ -140,8 +140,8 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     # # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
     pretrained_dictnew = {}
     for k, v in pretrained_dict.items():
-        # if 'module.' in k:
-        #     k = k[7:]
+        if 'module.' in k:
+            k = k[7:]
         pretrained_dictnew[k] = v
     # # # for k, v in pretrained_dict.items():
     # # #     k = k.strip('model.')

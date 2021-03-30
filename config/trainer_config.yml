@@ -7,8 +7,8 @@ trainer:
   gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: False # load pretrained checkpoint
-  gradient_accumulation: 64 # gradient accumulation steps
-  pretrained_cpkt: best_model.pth
+  gradient_accumulation: 8 # gradient accumulation steps
+  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained_cpkts/MS_ASL_100/date_08_03_2021_11.54.49/best_model_epoch_8.pth
   log_interval: 1000 # print statistics every log_interval
   model:
     name: IR_CSN_152 # model name
@@ -24,31 +24,31 @@ trainer:
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
-      batch_size: 2 # batch size
+      batch_size: 8 # batch size
       shuffle: False # shuffle samples after every epoch
-      num_workers: 2 # number of thread for dataloader1
+      num_workers: 6 # number of thread for dataloader1
     val:
-      batch_size: 2
+      batch_size: 8
       shuffle: False
-      num_workers: 2
+      num_workers: 4
     test:
       batch_size: 1
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: data/
-    name: AUTSL # dataset name
-    modality: depth # type of modality
-    classes: 226 # number of classes
+    input_data: /home/papastrat/Desktop/ilias/datasets/Greek_isolated/GSL_isol
+    name: GSL_ISO # dataset name
+    modality: RGB # type of modality
+    classes: 311 # number of classes
     normalize: True # mean, std normalization
     padding : True # pad videos
     dim: [224,224] # frame dimension
     train:
-      seq_length: 32 # number of frames for each video
+      seq_length: 16 # number of frames for each video
       augmentation: True # do augmentation to video
     val:
-      seq_length: 32
+      seq_length: 16
       augmentation: False
     test:
-      seq_length: 32
+      seq_length: 16
       augmentation: False

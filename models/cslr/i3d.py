@@ -5,7 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
+from utils.ctc_loss import CTC_Loss
+from einops import rearrange
 class MaxPool3dSamePadding(nn.MaxPool3d):
 
     def compute_pad(self, dim, s):
@@ -181,7 +182,7 @@ class InceptionI3d(nn.Module):
         'Predictions',
     )
 
-    def __init__(self, num_classes=400, temporal_resolution=50, mode='isolated', spatial_squeeze=True,
+    def __init__(self, num_classes=400, temporal_resolution=16, mode='continuous', spatial_squeeze=True,
                  final_endpoint='Logits', name='inception_i3d', in_channels=3, dropout_keep_prob=0.5):
         """Initializes I3D model instance.
         Args:
@@ -213,11 +214,11 @@ class InceptionI3d(nn.Module):
         self._final_endpoint = final_endpoint
         self.logits = None
         self.temp_resolution = temporal_resolution
-        last_duration = int(math.ceil(temporal_resolution / 8))
-        if (self.mode == 'unfold' or self.mode == 'features'):
-            self.window_size = temporal_resolution
-            self.stride = 3 * self.window_size // 4
-            print("Train with sliding window size {} stride {}".format(self.window_size, self.stride))
+        last_duration = int(math.ceil(16/ 8))
+        #if (self.mode == 'unfold' or self.mode == 'features'):
+        self.window_size = 16
+        self.stride = 8
+        print("Train with sliding window size {} stride {}".format(self.window_size, self.stride))
 
         if self._final_endpoint not in self.VALID_ENDPOINTS:
             raise ValueError('Unknown final endpoint %s' % self._final_endpoint)
@@ -300,6 +301,7 @@ class InceptionI3d(nn.Module):
         end_point = 'Logits'
         self.avg_pool = nn.AvgPool3d(kernel_size=[last_duration, 7, 7],
                                      stride=(1, 1, 1))
+        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.dropout = nn.Dropout(dropout_keep_prob)
         self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
                              kernel_shape=[1, 1, 1],
@@ -308,6 +310,7 @@ class InceptionI3d(nn.Module):
                              use_batch_norm=False,
                              use_bias=True,
                              name='logits')
+        self.loss = CTC_Loss()
 
         self.build()
 
@@ -325,7 +328,7 @@ class InceptionI3d(nn.Module):
         for k in self.end_points.keys():
             self.add_module(k, self.end_points[k])
 
-    def forward(self, x):
+    def forward(self, x , y):
 
         if (self.mode == 'isolated'):
             x = x.permute(0, 2, 1, 3, 4)
@@ -339,43 +342,33 @@ class InceptionI3d(nn.Module):
             logits = self.logits(x)
             return logits.squeeze(-1).squeeze(-1)
         elif (self.mode == 'continuous'):
-
-            batch_size, T, _, _, _ = x.size()
-
-            x = x.contiguous().permute(0, 2, 1, 3, 4)
-            for end_point in self.VALID_ENDPOINTS:
-                if end_point in self.end_points:
-                    # print(x.size())
-                    x = self._modules[end_point](x)  # use _modules to work with dataparallel
-
-            x = self.dropout(self.avg_pool(x))
-
-            batch_size, dim, final_time, _, _ = x.size()
-            #print("{} -> {} = {}".format(T,final_time,float(T)/final_time))
-            x1 = x.squeeze(-1).squeeze(-1).permute(2, 0, 1)
-            return x1
-        elif (self.mode == 'unfold'):
-
-            ### TO TRAIN WITH SLIDING WINDOW
-            ###
-            batch_size, T, _, _, _ = x.size()
-            print(x.size())
-            x = x.unfold(1, self.window_size, self.stride).squeeze(0).permute(0, 1, 4, 2, 3)
-            print(x.size())
-
-            for end_point in self.VALID_ENDPOINTS:
-                if end_point in self.end_points:
-                    # print(x.size())
-                    x = self._modules[end_point](x)  # use _modules to work with dataparallel
+            #print(x.shape)
+            x = x.unfold(2, self.window_size, self.stride).squeeze(0)
+            #print(x.shape)
+            x = rearrange(x, 'c n h w t -> n c t h w')
+            #print(x.shape)
+            with torch.no_grad():
+                for end_point in self.VALID_ENDPOINTS:
+                    if end_point in self.end_points:
+                        # print(x.size())
+                        x = self._modules[end_point](x)  # use _modules to work with dataparallel
 
             x = self.dropout(self.avg_pool(x))
 
             # logits = self.logits(x)
             # print(x.size())
             final_time, dim, _, _, _ = x.size()
-            print(x.size())
-            x = x.view(final_time, batch_size, dim)
-            return x
+
+
+            y_hat = self.logits(x)
+            y_hat = rearrange(y_hat,'t classes d h w -> t (d h w) classes')
+            #print(y_hat.size())
+            if y != None:
+                loss_ctc = self.loss(y_hat, y)
+                return y_hat, loss_ctc
+            return y_hat
+
+
         elif (self.mode == 'features'):
 
             batch_size, T, _, _, _ = x.size()

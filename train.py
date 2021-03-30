@@ -18,7 +18,7 @@ import torch.backends.cudnn as cudnn
 from omegaconf import OmegaConf
 from torch.utils.tensorboard import SummaryWriter
 
-from data_loader.dataset import data_generators
+from data_loader.dataset import data_generators,islr_datasets
 from models.model_utils import ISLR_video_encoder
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer import Trainer
@@ -77,7 +77,7 @@ def main():
         torch.cuda.manual_seed(config.seed)
     cudnn.benchmark = True
     cudnn.deterministic = True
-    training_generator, val_generator, test_generator, classes = data_generators(config)
+    training_generator, val_generator, test_generator, classes = islr_datasets(config)
 
     model = ISLR_video_encoder(config, len(classes))
 
@@ -88,25 +88,26 @@ def main():
 
     log.info(f'{len(classes)}')
 
+
+
+    if (config.load):
+        model.fc = torch.nn.Linear(2048, 226)
+
+        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
+
+        model.fc = torch.nn.Linear(2048, 311)
+
+    else:
+        pth_file = None
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
 
             model = torch.nn.DataParallel(model)
-
-    if (config.load):
-        model.fc = torch.nn.Linear(2048, 226)
-
-        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-
-        model.fc = torch.nn.Linear(2048, 226)
-
-    else:
-        pth_file = None
     model.to(device)
 
 
-    optimizer, scheduler = select_optimizer(model, config['model'], pth_file)
+    optimizer, scheduler = select_optimizer(model, config['model'], None)
 
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     trainer = Trainer(config, model=model, optimizer=optimizer,
