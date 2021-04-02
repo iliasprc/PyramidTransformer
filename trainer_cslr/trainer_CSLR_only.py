@@ -152,7 +152,7 @@ class Trainer_CSLR_method(BaseTrainer):
 
                 target = target.long().to(self.device)
 
-                output,loss_ctc = self.model(data)  # , lm_inputs)
+                output,loss_ctc = self.model(data,target)  # , lm_inputs)
 
 
 
@@ -167,10 +167,10 @@ class Trainer_CSLR_method(BaseTrainer):
         self._progress(batch_idx, epoch, metrics=self.valid_metrics, mode=mode, print_summary=True)
 
         check_dir(self.checkpoint_dir)
-        pred_name = self.checkpoint_dir.joinpath(mode + '_epoch_{:d}_WER_{:.2f}_.csv'.format(epoch,
-                                                                                             self.valid_metrics.avg(
-                                                                                                 'wer')))
-        write_csv(self.valid_sentences, pred_name)
+        # pred_name = self.checkpoint_dir.joinpath(mode + '_epoch_{:d}_WER_{:.2f}_.csv'.format(epoch,
+        #                                                                                      self.valid_metrics.avg(
+        #                                                                                          'wer')))
+        # write_csv(self.valid_sentences, pred_name)
         werr = self.valid_metrics.avg('wer')
         # if (self.args.dataset == 'phoenix2014' or self.args.dataset == 'phoenix2014_feats'):
         #     werr = evaluate_phoenix(pred_name, mode)
@@ -186,13 +186,14 @@ class Trainer_CSLR_method(BaseTrainer):
 
             print("!" * 10, "   VALIDATION   ", "!" * 10)
             werr = self._valid_epoch(epoch, 'dev', self.valid_data_loader)
+            #werr = 0
             check_dir(self.checkpoint_dir)
             self.checkpointer(epoch, werr)
             # TODO
-            self.lr_schedulers[0].step(float(werr))
-            if self.do_test:
-                print("!" * 10, "   TESTING   ", "!" * 10)
-                self._valid_epoch(epoch, 'test', self.test_data_loader)
+            self.lr_schedulers.step(float(werr))
+            # if self.do_test:
+            #     print("!" * 10, "   TESTING   ", "!" * 10)
+            #     self._valid_epoch(epoch, 'test', self.test_data_loader)
 
     def test(self):
         print("!" * 10, "   VALIDATION   ", "!" * 10)
@@ -212,8 +213,7 @@ class Trainer_CSLR_method(BaseTrainer):
             self.mnt_best = werr
 
             print("Best wer {} so far ".format(self.mnt_best))
-        with open(self.checkpoint_dir.joinpath('training_arguments.txt'), 'w') as f:
-            json.dump(self.args.__dict__, f, indent=2)
+
         save_checkpoint_slr(self.model, self.optimizer, epoch, self.valid_metrics.avg('wer'),
                             self.checkpoint_dir, 'generator',
                             save_seperate_layers=True, is_best=is_best)

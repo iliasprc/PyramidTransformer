@@ -60,7 +60,8 @@ class CSLRVideoResNet(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
-
+        encoder_layer = nn.TransformerEncoderLayer(d_model=2048, dim_feedforward=1024, nhead=8, dropout=0.2)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
         # init weights
         self.loss = CTC_Loss()
         self._initialize_weights()
@@ -75,7 +76,7 @@ class CSLRVideoResNet(nn.Module):
     def forward(self, x, y=None):
         #print(x.shape)
         x = x.unfold(2, self.window_size, self.stride).squeeze(0)
-        x = rearrange(x,'c t h w n -> n c t h w')
+        x = rearrange(x, 'c n h w t -> n c t h w')
         #print(x.shape)
         with torch.no_grad():
             x = self.stem(x)
@@ -83,12 +84,15 @@ class CSLRVideoResNet(nn.Module):
             x = self.layer1(x)
             x = self.layer2(x)
             x = self.layer3(x)
-        x = self.layer4(x)
+            x = self.layer4(x)
 
         x = self.avgpool(x)
+        #print(x.shape)
         # Flatten the layer to fc
         x = x.flatten(1)
-        y_hat = self.fc(x).unsqueeze(1)
+        #print(x.shape)
+        x = self.transformer_encoder(x.unsqueeze(1))
+        y_hat = self.fc(x)
        # print(y_hat.shape)
         if y!=None:
             loss_ctc = self.loss(y_hat,y)

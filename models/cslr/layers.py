@@ -367,7 +367,8 @@ class SpatialModulation(nn.Module):
         else:
             # print(x.shape)
             x = self.transformer_encoder(x)
-            x = torch.mean(x, dim=0)
+            x = torch.mean(x,dim=1,keepdim=True)
+
             # x = self.classifier(x)
 
             return x

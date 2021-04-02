@@ -142,8 +142,9 @@ class Trainer(BaseTrainer):
         """
         Train the model
         """
+
         for epoch in range(self.start_epoch, self.epochs):
-            torch.manual_seed(self.config.seed)
+            #torch.manual_seed(self.config.seed)
             self._train_epoch(epoch)
 
             self.logger.info(f"{'!' * 10}    VALIDATION   , {'!' * 10}")

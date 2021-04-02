@@ -18,14 +18,14 @@ import torch.backends.cudnn as cudnn
 from omegaconf import OmegaConf
 from torch.utils.tensorboard import SummaryWriter
 
-from data_loader.dataset import data_generators
+from data_loader.dataset import data_generators,islr_datasets
 from models.model_utils import ISLR_video_encoder
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer import Trainer
 from utils.logger import Logger
 from utils.util import arguments, getopts
 
-config_file = 'config/trainer_config.yml'
+config_file = 'config/ISLR/trainer_config.yml'
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
         if 'c' in myargs:
             config_file = myargs['c']
     else:
-        config_file = 'config/trainer_config.yml'
+        config_file = 'config/ISLR/trainer_config.yml'
 
     config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
 
@@ -77,7 +77,7 @@ def main():
         torch.cuda.manual_seed(config.seed)
     cudnn.benchmark = True
     cudnn.deterministic = True
-    training_generator, val_generator, test_generator, classes = data_generators(config)
+    training_generator, val_generator, test_generator, classes = islr_datasets(config)
 
     model = ISLR_video_encoder(config, len(classes))
 
@@ -86,28 +86,30 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device: {device}')
 
-    log.info(f'{len(classes)}')
 
+
+
+
+    if (config.load):
+        model.replace_logits(2000)
+
+        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
+
+        model.replace_logits(2042)
+
+    else:
+        pth_file = None
+    log.info(f'{model}')
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
 
             model = torch.nn.DataParallel(model)
-
-    if (config.load):
-        model.fc = torch.nn.Linear(2048, 226)
-
-        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-
-        model.fc = torch.nn.Linear(2048, 226)
-
-    else:
-        pth_file = None
     model.to(device)
 
 
-    optimizer, scheduler = select_optimizer(model, config['model'], pth_file)
-
+    optimizer, scheduler = select_optimizer(model, config['model'], None)
+    log.info(f'{model}')
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     trainer = Trainer(config, model=model, optimizer=optimizer,
                       data_loader=training_generator, writer=writer, logger=log,

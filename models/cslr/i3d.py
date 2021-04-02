@@ -5,7 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
+from utils.ctc_loss import CTC_Loss
+from einops import rearrange
 class MaxPool3dSamePadding(nn.MaxPool3d):
 
     def compute_pad(self, dim, s):
@@ -181,7 +182,7 @@ class InceptionI3d(nn.Module):
         'Predictions',
     )
 
-    def __init__(self, num_classes=400, temporal_resolution=50, mode='isolated', spatial_squeeze=True,
+    def __init__(self, num_classes=400, temporal_resolution=16, mode='isolated', spatial_squeeze=True,
                  final_endpoint='Logits', name='inception_i3d', in_channels=3, dropout_keep_prob=0.5):
         """Initializes I3D model instance.
         Args:
@@ -213,11 +214,11 @@ class InceptionI3d(nn.Module):
         self._final_endpoint = final_endpoint
         self.logits = None
         self.temp_resolution = temporal_resolution
-        last_duration = int(math.ceil(temporal_resolution / 8))
-        if (self.mode == 'unfold' or self.mode == 'features'):
-            self.window_size = temporal_resolution
-            self.stride = 3 * self.window_size // 4
-            print("Train with sliding window size {} stride {}".format(self.window_size, self.stride))
+        last_duration = int(math.ceil(16/ 8))
+        #if (self.mode == 'unfold' or self.mode == 'features'):
+        self.window_size = 16
+        self.stride = 8
+        print("Train with sliding window size {} stride {}".format(self.window_size, self.stride))
 
         if self._final_endpoint not in self.VALID_ENDPOINTS:
             raise ValueError('Unknown final endpoint %s' % self._final_endpoint)
@@ -300,6 +301,7 @@ class InceptionI3d(nn.Module):
         end_point = 'Logits'
         self.avg_pool = nn.AvgPool3d(kernel_size=[last_duration, 7, 7],
                                      stride=(1, 1, 1))
+        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.dropout = nn.Dropout(dropout_keep_prob)
         self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
                              kernel_shape=[1, 1, 1],
@@ -309,8 +311,16 @@ class InceptionI3d(nn.Module):
                              use_bias=True,
                              name='logits')
 
-        self.build()
+        self.loss = CTC_Loss()
 
+        self.build()
+        # self.rnn = nn.LSTM(
+        #     input_size=1024,
+        #     hidden_size=self.hidden_size,
+        #     num_layers=self.num_layers,
+        #     dropout=self.rnn_dropout,
+        #     bidirectional=True)
+        #self.freeze_param()
     def replace_logits(self, num_classes):
         self._num_classes = num_classes
         self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
@@ -325,10 +335,10 @@ class InceptionI3d(nn.Module):
         for k in self.end_points.keys():
             self.add_module(k, self.end_points[k])
 
-    def forward(self, x):
+    def forward(self, x , y=None):
 
         if (self.mode == 'isolated'):
-            x = x.permute(0, 2, 1, 3, 4)
+            x = x#.permute(0, 2, 1, 3, 4)
             for end_point in self.VALID_ENDPOINTS:
                 if end_point in self.end_points:
                     # print(x.size())
@@ -337,32 +347,18 @@ class InceptionI3d(nn.Module):
             x = self.dropout(self.avg_pool(x))
 
             logits = self.logits(x)
-            return logits.squeeze(-1).squeeze(-1)
+            y_hat =  logits.squeeze(-1).squeeze(-1).squeeze(-1)
+            if y!=None:
+                loss = F.cross_entropy(y_hat, y.squeeze(-1))
+                return y_hat, loss
+            return y_hat
         elif (self.mode == 'continuous'):
-
-            batch_size, T, _, _, _ = x.size()
-
-            x = x.contiguous().permute(0, 2, 1, 3, 4)
-            for end_point in self.VALID_ENDPOINTS:
-                if end_point in self.end_points:
-                    # print(x.size())
-                    x = self._modules[end_point](x)  # use _modules to work with dataparallel
-
-            x = self.dropout(self.avg_pool(x))
-
-            batch_size, dim, final_time, _, _ = x.size()
-            #print("{} -> {} = {}".format(T,final_time,float(T)/final_time))
-            x1 = x.squeeze(-1).squeeze(-1).permute(2, 0, 1)
-            return x1
-        elif (self.mode == 'unfold'):
-
-            ### TO TRAIN WITH SLIDING WINDOW
-            ###
-            batch_size, T, _, _, _ = x.size()
-            print(x.size())
-            x = x.unfold(1, self.window_size, self.stride).squeeze(0).permute(0, 1, 4, 2, 3)
-            print(x.size())
-
+            #print(x.shape)
+            x = x.unfold(2, self.window_size, self.stride).squeeze(0)
+            #print(x.shape)
+            x = rearrange(x, 'c n h w t -> n c t h w')
+            #print(x.shape)
+            #with torch.no_grad():
             for end_point in self.VALID_ENDPOINTS:
                 if end_point in self.end_points:
                     # print(x.size())
@@ -371,11 +367,21 @@ class InceptionI3d(nn.Module):
             x = self.dropout(self.avg_pool(x))
 
             # logits = self.logits(x)
-            # print(x.size())
+           # print(x.size())
             final_time, dim, _, _, _ = x.size()
-            print(x.size())
-            x = x.view(final_time, batch_size, dim)
-            return x
+
+            features = rearrange(x, 't dim d h w -> t (d h w) dim')
+            #print(features.size())
+            return features
+            y_hat = self.logits(x)
+            y_hat = rearrange(y_hat,'t classes d h w -> t (d h w) classes')
+            #print(y_hat.size())
+            if y != None:
+                loss_ctc = self.loss(y_hat, y)
+                return y_hat, loss_ctc
+            return y_hat
+
+
         elif (self.mode == 'features'):
 
             batch_size, T, _, _, _ = x.size()
@@ -394,3 +400,80 @@ class InceptionI3d(nn.Module):
             if end_point in self.end_points:
                 x = self._modules[end_point](x)
         return self.avg_pool(x)
+
+    def freeze_param(self):
+        count = 0
+        for name,param in self.named_parameters():
+            count += 1
+            print(name)
+            if 'Conv3d_' in name or 'Mixed_3' in name :
+                param.requires_grad = False
+
+            else:
+                param.requires_grad = True
+
+
+
+class SLR_I3D(nn.Module):
+    def __init__(self, num_classes=400, mode='continuous', temporal_resolution=25):
+        super(SLR_I3D, self).__init__()
+        self.hidden_size = 512
+        self.num_layers = 2
+        self.n_classes = num_classes
+        self.mode = mode
+
+
+        self.rnn_dropout = 0.4
+        self.bidirectional = True
+
+        self.cnn = InceptionI3d(num_classes=100, temporal_resolution=temporal_resolution, mode=mode,
+                                in_channels=3)
+        print("load imagenet  weights")
+        # cpkt = torch.load('/home/papastrat/Desktop/ilias/SLR_checkpoints/i3d_ms_asl100_.pth',
+        #                map_location='cpu')
+        # self.cnn.load_state_dict(
+        #     cpkt['model_dict'])
+        self.cnn.replace_logits(self.n_classes)
+
+        self.rnn = nn.LSTM(
+            input_size=1024,
+            hidden_size=self.hidden_size,
+            num_layers=self.num_layers,
+            dropout=self.rnn_dropout,
+            bidirectional=True)
+        #self.freeze_param()
+
+        self.loss = CTC_Loss(average=True)
+    def forward(self, x,y=None):
+
+        # batch_size, time, channels, height, width = x.size()
+        vid = x.size()
+        #print('input ',vid)
+        x = self.cnn(x)
+        #print("Before after {}".format(x.size()))
+        if (self.mode == 'isolated'):
+
+            return F.log_softmax(torch.mean(x, dim=-1), dim=-1)
+        elif (self.mode == 'continuous'):
+            #print(vid,'----> ',x.size())
+            r_out, (h_n, h_c) = self.rnn(x)
+            #r_out = x
+
+            x = self.cnn.logits(r_out.permute(1, 2, 0).unsqueeze(-1).unsqueeze(-1))
+            #print('logits ',x.size())
+            y_hat = x.squeeze(-1).squeeze(-1).permute(2, 0, 1)
+            if y!=None:
+                loss_ctc = self.loss(y_hat,y)
+                return y_hat,loss_ctc
+            return y_hat
+
+    def freeze_param(self):
+        count = 0
+        for param in self.cnn.parameters():
+            count += 1
+
+            param.requires_grad = False
+        for param in self.cnn.logits.parameters():
+            count += 1
+
+            param.requires_grad = True

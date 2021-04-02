@@ -170,7 +170,7 @@ def multi_label_to_index_out_of_vocabulary(classes, target_labels):
 
 def class2indextensor(classes, target_label):
     indexes = classes.index(target_label)
-    return torch.tensor(indexes, dtype=torch.long)
+    return torch.tensor([indexes], dtype=torch.long)
 
 
 def pad_video(x, padding_size=0, padding_type='images'):
@@ -216,7 +216,7 @@ def video_tensor_shuffle(x):
     return x
 
 
-def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=True, normalize=True, to_flip=False):
+def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=False, normalize=True, to_flip=False):
     """
     Image augmentation function
     Args:

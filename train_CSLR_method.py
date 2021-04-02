@@ -105,23 +105,23 @@ def main():
 
     log.info(f'{len(classes)}')
 
+
+
+    if (config.load):
+        model.fc = torch.nn.Linear(2048, 2042)
+
+        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
+
+        model.replace_logits(311)
+
+    else:
+        pth_file = None
+    model.to(device)
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
 
             model = torch.nn.DataParallel(model)
-
-    if (config.load):
-        model.fc = torch.nn.Linear(2048, 226)
-
-        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
-
-        model.fc = torch.nn.Linear(2048, len(classes))
-
-    else:
-        pth_file = None
-    model.to(device)
-
 
     optimizer, scheduler = select_optimizer(model, config['model'], None)
 

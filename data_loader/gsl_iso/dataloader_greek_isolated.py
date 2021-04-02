@@ -24,7 +24,7 @@ dev_filepath = "data_loader/gsl_iso/files/dev_greek_iso.csv"
 
 
 class GSL_ISO(Base_dataset):
-    def __init__(self, config, args, mode, classes):
+    def __init__(self, config,  mode, classes):
         """
 
         Args:
@@ -33,17 +33,17 @@ class GSL_ISO(Base_dataset):
             channels: Number of channels of frames
             dim: Dimensions of the frames
         """
-        super(GSL_ISO,self).__init__(config, args, mode, classes)
-        config = OmegaConf.load(os.path.join(args.cwd, "data_loader/gsl_iso/dataset.yml"))['dataset']
+        super(GSL_ISO,self).__init__(config,  mode, classes)
+        #config = OmegaConf.load(os.path.join(config.cwd, "data_loader/gsl_iso/dataset.yml"))['dataset']
 
-        self.dim = config.dim
-        self.num_classes = config.classes
-        self.seq_length = config[self.mode]['seq_length']
-        self.normalize = config.normalize
-        self.padding = config.padding
-        self.augmentation = config[self.mode]['augmentation']
+        self.dim = self.config.dataset.dim
+        self.num_classes = len(classes)
+        self.seq_length = self.config.dataset[self.mode]['seq_length']
+        self.normalize = self.config.dataset.normalize
+        self.padding = self.config.dataset.padding
+        self.augmentation = self.config.dataset[self.mode]['augmentation']
         print('Classes {}'.format(len(classes)))
-        cwd_path = args.cwd
+        cwd_path = self.config.cwd
         self.bbox = read_bounding_box(os.path.join(cwd_path,'data_loader/gsl_iso/files/bbox_for_gsl_isolated.txt'))
         # print(self.bbox)
         if mode == train_prefix:
@@ -56,12 +56,12 @@ class GSL_ISO(Base_dataset):
             print("{} {} instances  ".format(len(self.list_video_paths), mode))
             self.mode = mode
         elif mode == test_augmentation:
-            self.list_video_paths, self.list_glosses = read_gsl_isolated(os.path.join(cwd_path,dev_filepath))
+            self.list_video_paths, self.list_glosses = read_gsl_isolated(os.path.join(cwd_path,test_filepath))
             # print(self.list_video_paths)
             print("{} {} instances  ".format(len(self.list_video_paths), mode))
             self.mode = 'train'
 
-        self.data_path = os.path.join(self.config.input_data, config.images_path)
+        self.data_path = self.config.dataset.input_data
 
     def __len__(self):
         return len(self.list_video_paths)
@@ -82,15 +82,15 @@ class GSL_ISO(Base_dataset):
 
     def load_video_sequence(self, index, time_steps, dim=(224, 224), augmentation='test', padding=False, normalize=True,
                             img_type='png'):
-        # print(os.path.join(path, '*' + img_type))
+
         path = os.path.join(self.data_path, self.list_video_paths[index])
         images = sorted(glob.glob(os.path.join(path, '*' + img_type)))
-        # print(path)
+        #print(path,len(images))
         h_flip = False
         img_sequence = []
         # print(len(images))
         # print(self.bbox)
-        bbox = self.bbox.get(self.list_video_paths[index])
+        bbox = None#self.bbox.get(self.list_video_paths[index])
         # print(self.list_video_paths[index],self.bbox.get(self.list_video_paths[index]))
 
         if (augmentation == 'train'):
@@ -131,19 +131,20 @@ class GSL_ISO(Base_dataset):
             ## CROP BOUNDING BOX
 
             frame1 = np.array(frame_o)
-            if augmentation == 'test':
-                if bbox != None:
-                    frame1 = frame1[:, bbox['x1']:bbox['x2']]
-                else:
-                    frame1 = frame1[:, crop_size:648 - crop_size]
-            else:
-
-                if crop_or_bbox:
-                    frame1 = frame1[:, crop_size:648 - crop_size]
-                elif bbox != None:
-                    frame1 = frame1[:, bbox['x1']:bbox['x2']]
-                else:
-                    frame1 = frame1[:, crop_size:648 - crop_size]
+            # if augmentation == 'test':
+            #     if bbox != None:
+            #         frame1 = frame1[:, bbox['x1']:bbox['x2']]
+            #     else:
+            #         frame1 = frame1[:, crop_size:648 - crop_size]
+            # else:
+            #
+            #     if crop_or_bbox:
+            #         frame1 = frame1[:, crop_size:648 - crop_size]
+            #     elif bbox != None:
+            #         frame1 = frame1[:, bbox['x1']:bbox['x2']]
+            #     else:
+            #print(frame1.shape)
+            frame1 = frame1[:, crop_size:648 - crop_size]
             frame = Image.fromarray(frame1)
             if (augmentation == 'train'):
 
@@ -153,14 +154,14 @@ class GSL_ISO(Base_dataset):
 
                 img_tensor = video_transforms(img=frame, bright=brightness, cont=contrast, h=hue,
                                               resized_crop=t1,
-                                              augmentation='train',
+                                              augmentation=True,
                                               normalize=normalize,to_flip=False)
                 img_sequence.append(img_tensor)
             else:
                 # TEST set  NO DATA AUGMENTATION
                 frame = frame.resize(dim)
 
-                img_tensor = video_transforms(img=frame,  bright=1, cont=1, h=0,  augmentation='test',
+                img_tensor = video_transforms(img=frame,  bright=1, cont=1, h=0,  augmentation=False,
                                               normalize=normalize)
                 img_sequence.append(img_tensor)
         pad_len = time_steps - len(images)
@@ -169,7 +170,14 @@ class GSL_ISO(Base_dataset):
 
         if (padding):
             X1 = pad_video(X1, padding_size=pad_len, padding_type='zeros')
+
+        X2 = X1[1:]
+        k = X1[-1]
+        X2 = torch.stack((X2,k))
+        print(X2.shape)
         X1 = X1.permute(1,0,2,3)
+        #print(X1.shape)
+
         return X1
 def read_gsl_isolated(csv_path):
     paths, glosses_list = [], []
@@ -215,7 +223,7 @@ def read_bounding_box(path):
 
     # bbox.append(a)
     return bbox
-def read_gsl_isolated_classes(path):
+def read_classes_file(path):
     indices, classes = [], []
 
     data = open(path, 'r').read().splitlines()
