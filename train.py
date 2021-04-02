@@ -86,20 +86,19 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device: {device}')
 
-
+    log.info(f'{len(classes)}')
 
 
 
     if (config.load):
-        model.replace_logits(2000)
+        model.fc = torch.nn.Linear(2048, 226)
 
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
 
-        model.replace_logits(2042)
+        model.fc = torch.nn.Linear(2048, 311)
 
     else:
         pth_file = None
-    log.info(f'{model}')
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             log.info(f"Let's use {torch.cuda.device_count()} GPUs!")

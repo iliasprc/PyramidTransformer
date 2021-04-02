@@ -96,7 +96,7 @@ def islr_datasets(config):
                   'pin_memory': True}
 
     train_params = {'batch_size': config.dataloader.train.batch_size,
-                    'shuffle': True,
+                    'shuffle': config.dataloader.train.shuffle,
                     'num_workers': config.dataloader.train.num_workers,
                     'pin_memory': True}
 

@@ -40,25 +40,20 @@ model_urls = {
 
 def CSLR_video_encoder(config, N_classes):
     from models.cslr.cslr_ir_csn_152 import cslr_ir_csn_152
-    from models.cslr.i3d import InceptionI3d,SLR_I3D
+    from models.cslr.i3d import InceptionI3d
 
     if config.model.name == 'IR_CSN_152':
         return cslr_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
     elif config.model.name == 'I3D':
         return InceptionI3d(num_classes=100)
-    elif config.model.name == 'CSLR_I3D':
-        return SLR_I3D()
     elif config.model.name == 'IR_CSN_152_Transformer':
         from models.cslr.cslr_pyramid_transformer import cslr_ir_csn_152_transformer
         return cslr_ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                                       num_classes=N_classes)
 
 def ISLR_video_encoder(config, N_classes):
-    from models.cslr.i3d import InceptionI3d,SLR_I3D
     if config.model.name == 'IR_CSN_152':
         return ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
-    elif config.model.name == 'I3D':
-        return InceptionI3d(num_classes=100)
     elif config.model.name == 'ECA_IR_CSN_152':
         return eca_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                               num_classes=N_classes)
@@ -137,7 +132,7 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     """
     checkpoint1 = torch.load(checkpoint, map_location='cpu')
     print(checkpoint1.keys())
-    pretrained_dict = checkpoint1#['model_dict']
+    pretrained_dict = checkpoint1['model_dict']
     model_dict = model.state_dict()
     print(pretrained_dict.keys())
     print(model_dict.keys())
@@ -164,7 +159,7 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
 
     if (not load_seperate_layers):
         # model.load_state_dict(checkpoint1['model_dict'] , strict=strict)p
-        model.load_state_dict(pretrained_dict, strict=strict)
+        model.load_state_dict(pretrained_dictnew, strict=strict)
 
     epoch = 0
     if optimizer != None:

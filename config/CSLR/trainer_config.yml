@@ -4,14 +4,14 @@ trainer_cslr:
   epochs: 30 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
-  gpu: 1 # id of gpu
+  gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: True # load pretrained checkpoint
-  gradient_accumulation: 2 # gradient accumulation steps
-  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained/FINAL_nslt_2000_iters=5104_top1=32.48_top5=57.31_top10=66.31.pt
-  log_interval: 8000 # print statistics every log_interval
+  gradient_accumulation: 8 # gradient accumulation steps
+  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained_cpkts/best_model.pth
+  log_interval: 1000 # print statistics every log_interval
   model:
-    name: CSLR_I3D # model name
+    name: IR_CSN_152 # model name
     optimizer: # optimizer configuration
       type: Adam # optimizer type
       lr: 1e-4 # learning rate
@@ -37,7 +37,7 @@ trainer_cslr:
       num_workers: 2
   dataset:
     input_data: /home/papastrat/Desktop/ilias/datasets/GSL_continuous/
-    name: GSL_SI # dataset name
+    name: GSL_ISO # dataset name
     modality: RGB # type of modality
     classes: 311 # number of classes
     normalize: True # mean, std normalization
