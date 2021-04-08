@@ -338,13 +338,14 @@ class InceptionI3d(nn.Module):
     def forward(self, x , y=None):
 
         if (self.mode == 'isolated'):
-            x = x#.permute(0, 2, 1, 3, 4)
-            for end_point in self.VALID_ENDPOINTS:
-                if end_point in self.end_points:
-                    # print(x.size())
-                    x = self._modules[end_point](x)  # use _modules to work with dataparallel
+            with torch.no_grad():
+                x = x#.permute(0, 2, 1, 3, 4)
+                for end_point in self.VALID_ENDPOINTS:
+                    if end_point in self.end_points:
+                        # print(x.size())
+                        x = self._modules[end_point](x)  # use _modules to work with dataparallel
 
-            x = self.dropout(self.avg_pool(x))
+                x = self.dropout(self.avg_pool(x))
 
             logits = self.logits(x)
             y_hat =  logits.squeeze(-1).squeeze(-1).squeeze(-1)

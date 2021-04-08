@@ -236,6 +236,7 @@ def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=False
         if to_flip:
             img = transforms.functional.hflip(img)
         img = resized_crop(img)
+        #print(f'resize {img.size}')
         img = transforms.functional.adjust_brightness(img, bright)
         img = transforms.functional.adjust_contrast(img, cont)
         img = transforms.functional.adjust_hue(img, h)

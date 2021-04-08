@@ -9,6 +9,7 @@ from data_loader.loader_utils import read_autsl_csv
 from data_loader.gsl.dataloader_gsl_si import GSL_SI,read_gsl_continuous_classes
 from data_loader.multi_slr.dataloader_multi_SLR import Multi_SLR
 from data_loader.gsl_iso.dataloader_greek_isolated import GSL_ISO, read_gsl_isolated, read_classes_file
+from data_loader.wasl.wasl_dataset import WASLdataset
 def data_generators(config):
     """
 
@@ -155,6 +156,14 @@ def islr_datasets(config):
         test_set = AUTSLSkeleton(config, 'test', classes)
         test_generator = data.DataLoader(test_set, **test_params)
         return training_generator, validation_generator, test_generator, classes
+
+
+    elif config.dataset.name == 'WASL':
+        training_set = WASLdataset(config,'train')
+        training_generator = data.DataLoader(training_set, **train_params)
+        test_set = WASLdataset(config,'test')
+        test_generator = data.DataLoader(test_set, **train_params)
+        return training_generator, None, test_generator, training_set.classes
 def cslr_datasets(config):
     test_params = {'batch_size': config.dataloader.test.batch_size,
                    'shuffle': False,

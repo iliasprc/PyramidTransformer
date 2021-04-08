@@ -6,12 +6,12 @@ trainer:
   cuda: True # use nvidia gpu
   gpu: 1 # id of gpu
   save: True # save checkpoint
-  load: True # load pretrained checkpoint
+  load: False # load pretrained checkpoint
   gradient_accumulation: 4 # gradient accumulation steps
   pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_IR_CSN_152/dataset_MULTI_ISLR/date_30_03_2021_16.03.58/_model_epoch_10.pth
   log_interval: 1000 # print statistics every log_interval
   model:
-    name: IR_CSN_152 # model name
+    name: I3D # model name
     optimizer: # optimizer configuration
       type: SGD # optimizer type
       lr: 1e-2 # learning rate
@@ -24,7 +24,7 @@ trainer:
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
-      batch_size: 4 # batch size
+      batch_size: 2 # batch size
       shuffle: True # shuffle samples after every epoch
       num_workers: 4 # number of thread for dataloader1
     val:
@@ -36,8 +36,8 @@ trainer:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets/GSL_ISO/GSL_isol
-    name: GSL_ISO # dataset name
+    input_data: /home/papastrat/Desktop/ilias/datasets/wasl/videos
+    name: WASL # dataset name
     modality: RGB # type of modality
     classes: 311 # number of classes
     normalize: True # mean, std normalization

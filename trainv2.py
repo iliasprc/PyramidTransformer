@@ -91,11 +91,11 @@ def main():
 
 
     if (config.load):
-        model.replace_logits(2000)
+        model.replace_logits(2042)
 
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
 
-        model.replace_logits(2042)
+        model.replace_logits(311)
 
     else:
         pth_file = None
