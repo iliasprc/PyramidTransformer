@@ -9,6 +9,8 @@ from models.multimodal.mutimodal_model import RGBD_Transformer
 from models.vmz.eca_ir_csn_152 import eca_ir_csn_152
 from models.vmz.ir_csn_152 import ir_csn_152
 from models.vmz.pyramid_transformer import ir_csn_152_transformer
+from models.skeleton.skeleton_transformer import SkeletonTR
+from models.cslr.googlenet_tcl import GoogLeNet_TConvs
 
 model_urls = {
     "r2plus1d_34_8_ig65m": "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch-9bae36ae.pth",
@@ -40,20 +42,31 @@ model_urls = {
 
 def CSLR_video_encoder(config, N_classes):
     from models.cslr.cslr_ir_csn_152 import cslr_ir_csn_152
-    from models.cslr.i3d import InceptionI3d
+    from models.cslr.i3d import InceptionI3d,SLR_I3D
 
     if config.model.name == 'IR_CSN_152':
         return cslr_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
     elif config.model.name == 'I3D':
         return InceptionI3d(num_classes=100)
+    elif config.model.name =='GoogLeNet_TConvs':
+        return GoogLeNet_TConvs(N_classes=N_classes,mode='continuous')
+    elif config.model.name == 'CSLR_I3D':
+        return SLR_I3D()
     elif config.model.name == 'IR_CSN_152_Transformer':
         from models.cslr.cslr_pyramid_transformer import cslr_ir_csn_152_transformer
         return cslr_ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                                       num_classes=N_classes)
 
 def ISLR_video_encoder(config, N_classes):
+    from models.cslr.i3d import InceptionI3d,SLR_I3D
     if config.model.name == 'IR_CSN_152':
         return ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
+    elif config.model.name == 'I3D':
+        return InceptionI3d(num_classes=100)
+    elif config.model.name =='GoogLeNet_TConvs':
+        return GoogLeNet_TConvs(N_classes=N_classes)
+    elif config.model.name == 'SkeletonTR':
+        return SkeletonTR(planes = 512,N_classes = N_classes)
     elif config.model.name == 'ECA_IR_CSN_152':
         return eca_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                               num_classes=N_classes)

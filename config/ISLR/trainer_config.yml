@@ -1,14 +1,14 @@
 trainer:
   cwd: /home/papastrat/PycharmProjects/PyramidTransformer # working directory
   logger: SLR_challenge # logger name
-  epochs: 30 # number of training epochs
+  epochs: 200 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
-  gpu: 0,1 # id of gpu
+  gpu: 1 # id of gpu
   save: True # save checkpoint
-  load: False # load pretrained checkpoint
-  gradient_accumulation: 8 # gradient accumulation steps
-  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained_cpkts/MS_ASL_100/date_08_03_2021_11.54.49/best_model_epoch_8.pth
+  load: True # load pretrained checkpoint
+  gradient_accumulation: 4 # gradient accumulation steps
+  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_IR_CSN_152/dataset_MULTI_ISLR/date_30_03_2021_16.03.58/_model_epoch_10.pth
   log_interval: 1000 # print statistics every log_interval
   model:
     name: IR_CSN_152 # model name
@@ -19,16 +19,16 @@ trainer:
     scheduler: # learning rate scheduler
       type: ReduceLRonPlateau # type of scheduler
       scheduler_factor: 0.5 # learning rate change ratio
-      scheduler_patience: 0 # patience for some epochs
+      scheduler_patience: 2 # patience for some epochs
       scheduler_min_lr: 1e-3 # minimum learning rate value
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
-      batch_size: 8 # batch size
+      batch_size: 4 # batch size
       shuffle: True # shuffle samples after every epoch
       num_workers: 4 # number of thread for dataloader1
     val:
-      batch_size: 8
+      batch_size: 4
       shuffle: False
       num_workers: 4
     test:
@@ -36,10 +36,10 @@ trainer:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets/
-    name: MULTI_ISLR # dataset name
+    input_data: /home/papastrat/Desktop/ilias/datasets/GSL_ISO/GSL_isol
+    name: GSL_ISO # dataset name
     modality: RGB # type of modality
-    classes: 2000 # number of classes
+    classes: 311 # number of classes
     normalize: True # mean, std normalization
     padding : True # pad videos
     dim: [224,224] # frame dimension

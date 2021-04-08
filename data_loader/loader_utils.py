@@ -68,13 +68,13 @@ def read_autsl_labels(csv_path):
 
 
 def read_autsl_labelsv2(csv_path):
-    # # signers_val = ['signer11', 'signer16', 'signer18', 'signer1', 'signer25', 'signer35']
-    # signers_train = ['signer0', 'signer10', 'signer12', 'signer13', 'signer15', 'signer17', 'signer19', 'signer20',
-    #                  'signer21', 'signer22', 'signer23', 'signer24', 'signer26', 'signer28', 'signer29', 'signer2',
-    #                  'signer31', 'signer32', 'signer33', 'signer36', 'signer37', 'signer38', 'signer3', 'signer40',
-    #                  'signer41', 'signer42', 'signer4', 'signer5', 'signer7', 'signer8', 'signer9']
+    #signers_val = ['signer11', 'signer16', 'signer18', 'signer1', 'signer25', 'signer35']
+    signers_train = ['signer0', 'signer10', 'signer12', 'signer13', 'signer15', 'signer17', 'signer19', 'signer20',
+                     'signer21', 'signer22', 'signer23', 'signer24', 'signer26', 'signer28', 'signer29', 'signer2',
+                     'signer31', 'signer32', 'signer33', 'signer36', 'signer37', 'signer38', 'signer3', 'signer40',
+                     'signer41', 'signer42', 'signer4', 'signer5', 'signer7', 'signer8', 'signer9']
 
-    # signers_val = signers_train[0:6]
+    signers_val = signers_train[0:6]
 
     train_paths, train_labels = [], []
     classes = []

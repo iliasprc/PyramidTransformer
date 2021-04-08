@@ -176,4 +176,10 @@ class Multi_SLR(Base_dataset):
             # print(X1.shape)
             X1 = pad_video(X1, padding_size=pad_len, padding_type='zeros')
         #print(X1.shape)
+
+        # X2 = X1[1:]
+        # k = X1[-1].unsqueeze(0)
+        # X2 = torch.cat((X2,k))
+        # #print(X2.shape)
+        # X1 = X1-X2
         return X1.permute(1,0,2,3)

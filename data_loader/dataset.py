@@ -1,7 +1,7 @@
 import os
 
 import torch.utils.data as data
-
+from data_loader.autsl.autsl_loader_skeleton import AUTSLSkeleton
 from data_loader.autsl.autsl_loader import AUTSL
 # from data_loader.autsl.autsl_loaderv2 import AUTSLv2
 from data_loader.autsl.rgbd_loader import AUTSL_RGBD
@@ -96,7 +96,7 @@ def islr_datasets(config):
                   'pin_memory': True}
 
     train_params = {'batch_size': config.dataloader.train.batch_size,
-                    'shuffle': config.dataloader.train.shuffle,
+                    'shuffle': True,
                     'num_workers': config.dataloader.train.num_workers,
                     'pin_memory': True}
 
@@ -129,10 +129,32 @@ def islr_datasets(config):
         val_set = Multi_SLR(config,  'val', classes)
         val_generator = data.DataLoader(val_set, **val_params )
         return training_generator, val_generator, None, classes
-    elif config.dataset.name == 'MS_ASL':
-        return None
+    elif config.dataset.name == 'AUTSL':
 
+        train_prefix = "train"
+        validation_prefix = "val"
+        _, _, classes = read_autsl_csv(os.path.join(config.cwd, 'data_loader/autsl/train_labels.csv'))
+        training_set = AUTSL(config, train_prefix, classes)
+        training_generator = data.DataLoader(training_set, **train_params)
 
+        validation_set = AUTSL(config, validation_prefix, classes)
+        validation_generator = data.DataLoader(validation_set, **val_params)
+        test_set = AUTSL(config, 'test', classes)
+        test_generator = data.DataLoader(test_set, **test_params)
+        return training_generator, validation_generator, test_generator, classes
+    elif config.dataset.name == 'AUTSL_SK':
+
+        train_prefix = "train"
+        validation_prefix = "val"
+        _, _, classes = read_autsl_csv(os.path.join(config.cwd, 'data_loader/autsl/train_labels.csv'))
+        training_set = AUTSLSkeleton(config, train_prefix, classes)
+        training_generator = data.DataLoader(training_set, **train_params)
+
+        validation_set = AUTSLSkeleton(config, validation_prefix, classes)
+        validation_generator = data.DataLoader(validation_set, **val_params)
+        test_set = AUTSLSkeleton(config, 'test', classes)
+        test_generator = data.DataLoader(test_set, **test_params)
+        return training_generator, validation_generator, test_generator, classes
 def cslr_datasets(config):
     test_params = {'batch_size': config.dataloader.test.batch_size,
                    'shuffle': False,

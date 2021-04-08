@@ -170,8 +170,14 @@ class GSL_ISO(Base_dataset):
 
         if (padding):
             X1 = pad_video(X1, padding_size=pad_len, padding_type='zeros')
+
+        # X2 = X1[1:]
+        # k = X1[-1]
+        # X2 = torch.stack((X2,k))
+        # print(X2.shape)
         X1 = X1.permute(1,0,2,3)
         #print(X1.shape)
+
         return X1
 def read_gsl_isolated(csv_path):
     paths, glosses_list = [], []
