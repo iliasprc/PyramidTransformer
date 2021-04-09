@@ -72,8 +72,8 @@ class VideoResNet(nn.Module):
         with torch.no_grad():
             x = self.stem(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
+            x = self.layer1(x)
+            x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
 
@@ -293,7 +293,7 @@ def ir_csn_152(pretraining="ig65m_32frms", pretrained=False, progress=False, num
     state_dict = torch.hub.load_state_dict_from_url(
         model_urls["ir_csn_152_ig_ft_kinetics_32frms"], progress=progress
     )
-    model.load_state_dict(state_dict, strict=False)
+    model.load_state_dict(state_dict, strict=True)
     model.replace_logits(n_classes=num_classes)
 
     return model

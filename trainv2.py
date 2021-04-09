@@ -25,7 +25,7 @@ from trainer.trainer import Trainer
 from utils.logger import Logger
 from utils.util import arguments, getopts
 
-config_file = 'config/ISLR/trainer_config.yml'
+config_file = 'config/ISLR/trainer_config2.yml'
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
         if 'c' in myargs:
             config_file = myargs['c']
     else:
-        config_file = 'config/ISLR/trainer_config.yml'
+        config_file = 'config/ISLR/trainer_config2.yml'
 
     config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
 

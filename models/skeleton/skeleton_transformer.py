@@ -36,7 +36,7 @@ class SkeletonTR(nn.Module):
         #self.embed = nn.Sequential(nn.Linear(133*3,planes),nn.ReLU(),nn.Dropout(0.2),nn.Linear(planes,planes))
 
         self.pe = PositionalEncoding1D(planes)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.2)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.1)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
        # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
        # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
@@ -72,7 +72,7 @@ class SkeletonTR(nn.Module):
             x = self.transformer_encoder(x)
             #print(x.shape,x[0].shape)
             cls_token = x[0]
-            y_hat = cls_token  # self.to_out(cls_token)
+            y_hat = self.to_out(cls_token)
         else:
             # print(x.shape)
             x = rearrange(x, 'b t d -> t b d')

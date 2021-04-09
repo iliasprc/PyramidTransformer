@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 import torch
 import torch.utils.data as data_utl
-from data_loader.loader_utils import video_transforms,sampling, VideoRandomResizedCrop,class2indextensor,pad_video
+from data_loader.loader_utils import video_transforms,sampling, VideoRandomResizedCrop,class2indextensor,pad_video,sampling_mode
 
 def video_to_tensor(pic):
     """Convert a ``numpy.ndarray`` to tensor.
@@ -40,7 +40,7 @@ def load_rgb_frames(image_dir, vid, start, num):
     return np.asarray(frames, dtype=np.float32)
 
 
-def load_rgb_frames_from_video(vid_root, vid, start, num,augmentation=False):
+def load_rgb_frames_from_video(vid_root, vid, start, num,augmentation=False,seq_length = 16):
     if augmentation:
         i = np.random.randint(0, 30)
         j = np.random.randint(0, 30)
@@ -65,32 +65,55 @@ def load_rgb_frames_from_video(vid_root, vid, start, num,augmentation=False):
     vidcap = cv2.VideoCapture(video_path)
 
     total_frames = vidcap.get(cv2.CAP_PROP_FRAME_COUNT)
-
+    #print(total_frames)
+    range_ = int(min(num, int(total_frames - start)))
+    #print(f'{vid} , min = {min(num, int(total_frames - start))}  frames = {total_frames}   start = {start}')
+    if range_<0:
+        print('EROROROROR \n\n\n\n')
+        range_ = int(total_frames)
+        start = 0
+        print(f'{vid} , min = {min(num, int(total_frames - start))}  frames = {total_frames}   start = {start}')
     vidcap.set(cv2.CAP_PROP_POS_FRAMES, start)
-    for offset in range(min(num, int(total_frames - start))):
+
+    for offset in range(range_):
         success, img = vidcap.read()
+        if success:
+            w, h, c = img.shape
+            if w < 226 or h < 226:
+                d = 226. - min(w, h)
+                sc = 1 + d / min(w, h)
+                img = cv2.resize(img, dsize=(0, 0), fx=sc, fy=sc)
 
-        w, h, c = img.shape
-        if w < 226 or h < 226:
-            d = 226. - min(w, h)
-            sc = 1 + d / min(w, h)
-            img = cv2.resize(img, dsize=(0, 0), fx=sc, fy=sc)
+            if w > 256 or h > 256:
+                img = cv2.resize(img, (math.ceil(w * (256 / w)), math.ceil(h * (256 / h))))
+            #print(img.shape)
+            if not augmentation:
+                img = cv2.resize(img, (224, 224))
+            img = video_transforms(img=Image.fromarray(img), bright=brightness, cont=contrast, h=hue,
+                                          resized_crop=t1,
+                                          augmentation=augmentation,
+                                          normalize=normalize, to_flip=False)
+            #img = (img / 255.)
+            #print(img.shape)
+            frames.append(img)
+    #print(len(frames))
+    if len(frames)<5:
+        print(f'{vid} , min = {min(num, int(total_frames - start))}  frames = {total_frames}   start = {start}')
 
-        if w > 256 or h > 256:
-            img = cv2.resize(img, (math.ceil(w * (256 / w)), math.ceil(h * (256 / h))))
-        #print(img.shape)
-        if not augmentation:
-            img = cv2.resize(img, (224, 224))
-        img = video_transforms(img=Image.fromarray(img), bright=brightness, cont=contrast, h=hue,
-                                      resized_crop=t1,
-                                      augmentation=augmentation,
-                                      normalize=normalize, to_flip=False)
-        #img = (img / 255.)
-        #print(img.shape)
-        frames.append(img)
-
-    return frames
-
+    num_of_images = list(range(len(frames)))
+    if len(frames)>seq_length :
+        if augmentation:
+            #print(num_of_images)
+            num_of_images = sampling_mode(True, num_of_images, seq_length )
+            #print(num_of_images)
+        else:
+            num_of_images = sampling_mode(False,num_of_images,seq_length )
+            #print(num_of_images)
+        #frames = frames[num_of_images]
+        #print(len(frames))
+        return list(frames[i] for i in num_of_images)
+    else:
+        return frames
 
 def load_flow_frames(image_dir, vid, start, num):
     frames = []
@@ -207,11 +230,10 @@ class WASLdataset(data_utl.Dataset):
         #self.num_classes = get_num_class(split_file)
         self.classes = list(range(2000))
 
-
-
+        self.padding = True
         self.mode = mode
         self.root = self.config.dataset.input_data
-        self.seq_length = 16
+        self.seq_length = 32
 
     def __getitem__(self, index):
         """
@@ -225,25 +247,27 @@ class WASLdataset(data_utl.Dataset):
         start_frame = int(start_frame)
         label = int(label)
         nf = int(nf)
-        total_frames = self.seq_length
+        total_frames = 64#self.seq_length
 
         try:
             start_f = random.randint(0, nf - total_frames - 1) + start_frame
         except ValueError:
             start_f = start_frame
         #print('AUG ',self.augmentation)
-        imgs = load_rgb_frames_from_video(self.root, vid, start_f, total_frames,augmentation=self.augmentation )
+        imgs = load_rgb_frames_from_video(self.root, vid, start_f, num= total_frames,augmentation=self.augmentation,seq_length=self.seq_length )
 
         #print(len(imgs))
+        if len(imgs)<10:
+            print(vid)
         X1 = torch.stack(imgs).float()
         #print(X1.shape)
-        # if (self.padding):
-        #     X1 = pad_video(X1, padding_size=pad_len, padding_type='zeros')
+        if (self.padding):
+            X1 = pad_video(X1, padding_size=self.seq_length-len(imgs), padding_type='zeros')
         #print(label)
         y = torch.Tensor([label])
         #print(y.shape)
         #ret_img = video_to_tensor(imgs)
-
+        #print(X1.shape)
         return X1.permute(1,0,2,3),y
 
     def __len__(self):

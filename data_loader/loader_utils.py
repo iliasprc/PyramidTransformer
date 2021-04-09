@@ -184,11 +184,18 @@ def pad_video(x, padding_size=0, padding_type='images'):
     Returns:
 
     """
+    # print(padding_size ,'pad size')
+    assert len(x.shape) == 4
     if padding_size != 0:
         if padding_type == 'images':
-            pad_img = x[0]
-            padx = pad_img.repeat(padding_size, 1, 1, 1)
-            X = torch.cat((padx, x))
+            if random.uniform(0, 1) > 0.5:
+                pad_img = x[0]
+                padx = pad_img.repeat(padding_size, 1, 1, 1)
+                X = torch.cat((padx, x))
+            else:
+                pad_img = x[-1]
+                padx = pad_img.repeat(padding_size, 1, 1, 1)
+                X = torch.cat(( x,padx))
             return X
         elif padding_type == 'zeros':
             T, C, H, W = x.size()
@@ -216,7 +223,7 @@ def video_tensor_shuffle(x):
     return x
 
 
-def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=False, normalize=True, to_flip=False):
+def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=False, normalize=True, to_flip=False,grayscale= False):
     """
     Image augmentation function
     Args:
@@ -233,6 +240,8 @@ def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=False
     """
     if augmentation:
         t = transforms.ToTensor()
+        if grayscale:
+            img = transforms.functional.to_grayscale(img,3)
         if to_flip:
             img = transforms.functional.hflip(img)
         img = resized_crop(img)
@@ -317,9 +326,9 @@ def load_video_sequence(path, time_steps, dim=(224, 224), augmentation='test', p
     tensor_imgs = torch.stack(img_sequence).float().permute(1, 0, 2, 3)
 
     if padding:
-        tensor_imgs = pad_video(tensor_imgs, padding_size=pad_len, padding_type='zeros')
+        tensor_imgs = pad_video(tensor_imgs, padding_size=pad_len, padding_type='images')
     elif len(images) < sign_length_check:
-        tensor_imgs = pad_video(tensor_imgs, padding_size=sign_length_check - len(images), padding_type='zeros')
+        tensor_imgs = pad_video(tensor_imgs, padding_size=sign_length_check - len(images), padding_type='images')
 
     return tensor_imgs
 

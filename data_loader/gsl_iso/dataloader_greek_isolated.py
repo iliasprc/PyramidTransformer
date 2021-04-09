@@ -114,8 +114,8 @@ class GSL_ISO(Base_dataset):
         hue = random.uniform(0, 1) / 10.0
         r_resize = ((256, 256))
         crop_or_bbox = random.uniform(0, 1) > 0.5
-        to_flip = random.uniform(0, 1) > 0.9
-        grayscale = random.uniform(0, 1) > 0.9
+        to_flip = random.uniform(0, 1) > 0.5
+        grayscale = random.uniform(0, 1) > 0.8
 
 
         if (len(images) == 0):
@@ -155,7 +155,7 @@ class GSL_ISO(Base_dataset):
                 img_tensor = video_transforms(img=frame, bright=brightness, cont=contrast, h=hue,
                                               resized_crop=t1,
                                               augmentation=True,
-                                              normalize=normalize,to_flip=False)
+                                              normalize=normalize,to_flip=to_flip,grayscale=grayscale)
                 img_sequence.append(img_tensor)
             else:
                 # TEST set  NO DATA AUGMENTATION
@@ -169,7 +169,7 @@ class GSL_ISO(Base_dataset):
         X1 = torch.stack(img_sequence).float()
 
         if (padding):
-            X1 = pad_video(X1, padding_size=pad_len, padding_type='zeros')
+            X1 = pad_video(X1, padding_size=pad_len, padding_type='images')
 
         # X2 = X1[1:]
         # k = X1[-1]

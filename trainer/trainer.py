@@ -196,7 +196,7 @@ class Trainer(BaseTrainer):
         # with open(os.path.join(self.checkpoint_dir, 'training_arguments.txt'), 'w') as f:
         #     json.dump(self.args.__dict__, f, indent=2)
         save_checkpoint_slr(self.model, self.optimizer, epoch, self.valid_metrics.avg('loss'),
-                            self.checkpoint_dir, f'_model_epoch_{str(epoch)}',
+                            self.checkpoint_dir, f'_model_epoch',
                             save_seperate_layers=True, is_best=is_best)
 
     def _progress(self, batch_idx, epoch, metrics, mode='', print_summary=False):

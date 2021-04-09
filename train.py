@@ -83,7 +83,7 @@ def main():
 
     use_cuda = torch.cuda.is_available()
 
-    device = torch.device("cuda:0" if use_cuda else "cpu")
+    device = torch.device("cuda" if use_cuda else "cpu")
     log.info(f'device: {device}')
 
 
@@ -91,11 +91,11 @@ def main():
 
 
     if (config.load):
-        model.replace_logits(2042)
+        model.replace_logits(2000)
 
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
 
-        model.replace_logits(311)
+        model.replace_logits(2042)
 
     else:
         pth_file = None

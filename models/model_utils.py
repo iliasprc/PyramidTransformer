@@ -11,6 +11,7 @@ from models.vmz.ir_csn_152 import ir_csn_152
 from models.vmz.pyramid_transformer import ir_csn_152_transformer
 from models.skeleton.skeleton_transformer import SkeletonTR
 from models.cslr.googlenet_tcl import GoogLeNet_TConvs
+from models.gcn.model.decouple_gcn_attn import STGCN,STGCN_Transformer
 
 model_urls = {
     "r2plus1d_34_8_ig65m": "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch-9bae36ae.pth",
@@ -62,11 +63,15 @@ def ISLR_video_encoder(config, N_classes):
     if config.model.name == 'IR_CSN_152':
         return ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
     elif config.model.name == 'I3D':
-        return InceptionI3d(num_classes=100)
+        return InceptionI3d(num_classes=N_classes)
     elif config.model.name =='GoogLeNet_TConvs':
         return GoogLeNet_TConvs(N_classes=N_classes)
     elif config.model.name == 'SkeletonTR':
-        return SkeletonTR(planes = 512,N_classes = N_classes)
+        return SkeletonTR(N_classes = N_classes)
+    elif config.model.name == 'STGCN':
+        return STGCN(config,num_class=N_classes)
+    elif config.model.name == 'STGCN_Transformer':
+        return STGCN_Transformer(config,num_class=N_classes)
     elif config.model.name == 'ECA_IR_CSN_152':
         return eca_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                               num_classes=N_classes)
@@ -145,7 +150,7 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     """
     checkpoint1 = torch.load(checkpoint, map_location='cpu')
     print(checkpoint1.keys())
-    pretrained_dict = checkpoint1['model_dict']
+    pretrained_dict = checkpoint1#['model_dict']
     model_dict = model.state_dict()
     print(pretrained_dict.keys())
     print(model_dict.keys())
@@ -277,7 +282,8 @@ def select_optimizer(model, config, checkpoint=None):
         optimizer = optim.Adam(model.parameters(), lr=float(config['optimizer']['lr']), weight_decay=0.00001)
     elif (opt == 'SGD'):
         print(" use optimizer SGD lr ", lr)
-        optimizer = optim.SGD(model.parameters(), lr=float(config['optimizer']['lr']), momentum=0.9)
+        optimizer = optim.SGD(model.parameters(), lr=float(config['optimizer']['lr']), momentum=0.9,nesterov=True,
+                              weight_decay=float(config['optimizer']['weight_decay']))
     elif (opt == 'RMSprop'):
         print(" use RMS  lr", lr)
         optimizer = optim.RMSprop(model.parameters(), lr=float(config['optimizer']['lr']))

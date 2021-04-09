@@ -1,11 +1,40 @@
+import numpy as np
+import math
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
-import numpy as np
-import math
-from model.dropSke import DropBlock_Ske
-from model.dropT import DropBlockT_1d
+from einops import repeat, rearrange
+
+from models.gcn.graph.sign_27 import Graph
+from models.gcn.model.dropSke import DropBlock_Ske
+from models.gcn.model.dropT import DropBlockT_1d
+
+
+def expand_to_batch(tensor, desired_size):
+    tile = desired_size // tensor.shape[0]
+    return repeat(tensor, 'b ... -> (b tile) ...', tile=tile)
+
+
+class PositionalEncoding1D(nn.Module):
+
+    def __init__(self, dim, dropout=0.1, max_tokens=216):
+        super(PositionalEncoding1D, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(1, max_tokens, dim)
+        position = torch.arange(0, max_tokens, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, dim, 2).float() * (-torch.log(torch.Tensor([10000.0])) / dim))
+        pe[..., 0::2] = torch.sin(position * div_term)
+        pe[..., 1::2] = torch.cos(position * div_term)
+        # pe = pe.unsqueeze(0).transpose(0, 1)
+        self.pe = pe.cuda()
+
+    def forward(self, x):
+        batch, seq_tokens, _ = x.size()
+        x = x + expand_to_batch(self.pe[:, :seq_tokens, :], desired_size=batch)
+        return self.dropout(x)
 
 
 def import_class(name):
@@ -82,7 +111,8 @@ class unit_gcn(nn.Module):
         self.groups = groups
         self.num_subset = num_subset
         self.DecoupleA = nn.Parameter(torch.tensor(np.reshape(A.astype(np.float32), [
-                                      3, 1, num_point, num_point]), dtype=torch.float32, requires_grad=True).repeat(1, groups, 1, 1), requires_grad=True)
+            3, 1, num_point, num_point]), dtype=torch.float32, requires_grad=True).repeat(1, groups, 1, 1),
+                                      requires_grad=True)
 
         if in_channels != out_channels:
             self.down = nn.Sequential(
@@ -104,25 +134,25 @@ class unit_gcn(nn.Module):
         bn_init(self.bn, 1e-6)
 
         self.Linear_weight = nn.Parameter(torch.zeros(
-            in_channels, out_channels * num_subset, requires_grad=True, device='cuda'), requires_grad=True)
+            in_channels, out_channels * num_subset, requires_grad=True), requires_grad=True)
         nn.init.normal_(self.Linear_weight, 0, math.sqrt(
             0.5 / (out_channels * num_subset)))
 
         self.Linear_bias = nn.Parameter(torch.zeros(
-            1, out_channels * num_subset, 1, 1, requires_grad=True, device='cuda'), requires_grad=True)
+            1, out_channels * num_subset, 1, 1, requires_grad=True), requires_grad=True)
         nn.init.constant(self.Linear_bias, 1e-6)
 
         eye_array = []
         for i in range(out_channels):
             eye_array.append(torch.eye(num_point))
         self.eyes = nn.Parameter(torch.tensor(torch.stack(
-            eye_array), requires_grad=False, device='cuda'), requires_grad=False)  # [c,25,25]
+            eye_array), requires_grad=False), requires_grad=False)  # [c,25,25]
 
     def norm(self, A):
         b, c, h, w = A.size()
         A = A.view(c, self.num_point, self.num_point)
         D_list = torch.sum(A, 1).view(c, 1, self.num_point)
-        D_list_12 = (D_list + 0.001)**(-1)
+        D_list_12 = (D_list + 0.001) ** (-1)
         D_12 = self.eyes * D_list_12
         A = torch.bmm(A, D_12).view(b, c, h, w)
         return A
@@ -149,7 +179,8 @@ class unit_gcn(nn.Module):
 
 
 class TCN_GCN_unit(nn.Module):
-    def __init__(self, in_channels, out_channels, A, groups, num_point, block_size, stride=1, residual=True, attention=True):
+    def __init__(self, in_channels, out_channels, A, groups, num_point, block_size, stride=1, residual=True,
+                 attention=True):
         super(TCN_GCN_unit, self).__init__()
         num_jpts = A.shape[-1]
         self.gcn1 = unit_gcn(in_channels, out_channels, A, groups, num_point)
@@ -158,7 +189,7 @@ class TCN_GCN_unit(nn.Module):
         self.relu = nn.ReLU()
 
         self.A = nn.Parameter(torch.tensor(np.sum(np.reshape(A.astype(np.float32), [
-                              3, num_point, num_point]), axis=0), dtype=torch.float32, requires_grad=False, device='cuda'), requires_grad=False)
+            3, num_point, num_point]), axis=0), dtype=torch.float32, requires_grad=False), requires_grad=False)
 
         if not residual:
             self.residual = lambda x: 0
@@ -215,22 +246,31 @@ class TCN_GCN_unit(nn.Module):
             se2 = self.sigmoid(self.fc2c(se1))
             y = y * se2.unsqueeze(-1).unsqueeze(-1) + y
             # a3 = se2.unsqueeze(-1).unsqueeze(-1)
-            
+
         y = self.tcn1(y, keep_prob, self.A)
         x_skip = self.dropT_skip(self.dropSke(self.residual(x), keep_prob, self.A), keep_prob)
         return self.relu(y + x_skip)
 
 
-class Model(nn.Module):
-    def __init__(self, num_class=60, num_point=25, num_person=2, groups=8, block_size=41, graph=None, graph_args=dict(), in_channels=3):
-        super(Model, self).__init__()
+from omegaconf import OmegaConf
+import os
 
+
+class STGCN(nn.Module):
+    def __init__(self, config, num_class=226, in_channels=3):
+        super(STGCN, self).__init__()
+        model_config = OmegaConf.load(os.path.join(config.cwd, 'models/gcn/model/model.yml'))
+        graph = model_config.model_args.graph
+        print(model_config)
         if graph is None:
             raise ValueError()
         else:
-            Graph = import_class(graph)
-            self.graph = Graph(**graph_args)
 
+            self.graph = Graph(model_config.model_args.graph_args.labeling_mode)
+        num_person = 1
+        num_point = model_config.model_args.num_point
+        groups = model_config.model_args.groups
+        block_size = model_config.model_args.block_size
         A = self.graph.A
         self.data_bn = nn.BatchNorm1d(num_person * in_channels * num_point)
 
@@ -252,7 +292,11 @@ class Model(nn.Module):
         nn.init.normal(self.fc.weight, 0, math.sqrt(2. / num_class))
         bn_init(self.data_bn, 1)
 
-    def forward(self, x, keep_prob=0.9):
+    def forward(self, x, y=None, keep_prob=0.9):
+        # print(x.shape)
+        x = x.unsqueeze(-1)
+        x = rearrange(x, 'n t v c m -> n c t v m')
+        # print(x.shape)
         N, C, T, V, M = x.size()
         x = x.permute(0, 4, 3, 1, 2).contiguous().view(N, M * V * C, T)
         x = self.data_bn(x)
@@ -278,6 +322,118 @@ class Model(nn.Module):
 
         # x = x.view(N, M, c_new, -1)
         x = x.reshape(N, M, c_new, -1)
+        # print(x.shape)
         x = x.mean(3).mean(1)
+        y_hat = self.fc(x)
+        if y != None:
+            loss = F.cross_entropy(y_hat, y.squeeze(-1))
+            return y_hat, loss
+        return y_hat
 
-        return self.fc(x)
+
+class STGCN_Transformer(nn.Module):
+    def __init__(self, config, num_class=226, in_channels=3):
+        super(STGCN_Transformer, self).__init__()
+        model_config = OmegaConf.load(os.path.join(config.cwd, 'models/gcn/model/model.yml'))
+        graph = model_config.model_args.graph
+        print(model_config)
+        if graph is None:
+            raise ValueError()
+        else:
+
+            self.graph = Graph(model_config.model_args.graph_args.labeling_mode)
+        num_person = 1
+        num_point = model_config.model_args.num_point
+        groups = model_config.model_args.groups
+        block_size = model_config.model_args.block_size
+        A = self.graph.A
+        self.data_bn = nn.BatchNorm1d(num_person * in_channels * num_point)
+
+        self.l1 = TCN_GCN_unit(in_channels, 64, A, groups, num_point,
+                               block_size, residual=False)
+        self.l2 = TCN_GCN_unit(64, 64, A, groups, num_point, block_size)
+        self.l3 = TCN_GCN_unit(64, 64, A, groups, num_point, block_size)
+        self.l4 = TCN_GCN_unit(64, 64, A, groups, num_point, block_size)
+        self.l5 = TCN_GCN_unit(
+            64, 128, A, groups, num_point, block_size, stride=2)
+        self.l6 = TCN_GCN_unit(128, 128, A, groups, num_point, block_size)
+        self.l7 = TCN_GCN_unit(128, 128, A, groups, num_point, block_size)
+        self.l8 = TCN_GCN_unit(128, 256, A, groups,
+                               num_point, block_size, stride=2)
+        self.l9 = TCN_GCN_unit(256, 256, A, groups, num_point, block_size)
+        self.l10 = TCN_GCN_unit(256, 256, A, groups, num_point, block_size)
+        planes = 256
+        self.pe = PositionalEncoding1D(planes)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.2)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
+        # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
+
+        self.use_cls_token = True
+        if self.use_cls_token:
+            self.cls_token = nn.Parameter(torch.randn(1, planes))
+            self.fc = nn.Sequential(
+                nn.LayerNorm(planes),
+                nn.Linear(planes, num_class)
+            )
+        else:
+            self.fc = nn.Linear(256, num_class)
+        #nn.init.normal(self.fc.weight, 0, math.sqrt(2. / num_class))
+        bn_init(self.data_bn, 1)
+
+    def forward(self, x, y=None, keep_prob=0.9):
+        # print(x.shape)
+        x = x.unsqueeze(-1)
+        x = rearrange(x, 'n t v c m -> n c t v m')
+        # print(x.shape)
+        N, C, T, V, M = x.size()
+        x = x.permute(0, 4, 3, 1, 2).contiguous().view(N, M * V * C, T)
+        x = self.data_bn(x)
+        x = x.view(N, M, V, C, T).permute(
+            0, 1, 3, 4, 2).contiguous().view(N * M, C, T, V)
+
+        x = self.l1(x, 1.0)
+        x = self.l2(x, 1.0)
+        x = self.l3(x, 1.0)
+        x = self.l4(x, 1.0)
+        x = self.l5(x, 1.0)
+        x = self.l6(x, 1.0)
+        x = self.l7(x, keep_prob)
+        x = self.l8(x, keep_prob)
+        x = self.l9(x, keep_prob)
+        x = self.l10(x, keep_prob)
+
+        # N*M,C,T,V
+        c_new = x.size(1)
+
+        # print(x.size())
+        # print(N, M, c_new)
+
+        # x = x.view(N, M, c_new, -1)
+        x = x.reshape(N, M, c_new, -1)
+        #print(x.shape)
+        b = x.shape[0]
+        x = rearrange(x, 'b m c t -> b t (c m)')
+        x = self.pe(x)
+
+        #print(x.shape)
+        #print(x.shape)
+        #x = rearrange(x, 'b c t h w -> (t h w) b c')
+
+        #if self.use_cls_token:
+        cls_token = repeat(self.cls_token, 'n d -> b n d', b=b)
+        #print(cls_token.shape,x.shape)
+        x = torch.cat((cls_token, x), dim=1)
+        #print(x.shape)
+        #x= rearrange(x,'b t d -> t b d')
+        x = rearrange(x, 'b t c -> t b c')
+        x = self.transformer_encoder(x)
+        #print(x.shape,x[0].shape)
+        cls_token = x[0]
+        y_hat = self.fc(cls_token)
+        #x = x.mean(3).mean(1)
+        #y_hat = self.fc(x)
+        if y != None:
+            loss = F.cross_entropy(y_hat, y.squeeze(-1))
+            return y_hat, loss
+        return y_hat

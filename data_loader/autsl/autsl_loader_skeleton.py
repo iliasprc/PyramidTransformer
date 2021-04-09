@@ -41,8 +41,8 @@ class AUTSLSkeleton(Base_dataset):
         self.list_rgb = sorted(glob.glob(os.path.join(config.cwd, f'train/*color.mp4.npy')))
 
         train_paths, train_labels, _ = read_autsl_labelsv2(
-            './data_loader/autsl/train_labels.csv')
-        val_paths, val_labels, _ = read_autsl_labelsv2('./data_loader/autsl/ground_truth_validation.csv')
+            os.path.join(config.cwd,'data_loader/autsl/train_labels.csv'))
+        val_paths, val_labels, _ = read_autsl_labelsv2(os.path.join(config.cwd,'data_loader/autsl/ground_truth_validation.csv'))
 
         # train_paths, train_labels, val_paths, val_labels, classes = read_autsl_labels('./data_loader/autsl/train_labels.csv')
 
