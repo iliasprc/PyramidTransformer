@@ -130,11 +130,12 @@ class Multi_SLR(Base_dataset):
         to_flip = random.uniform(0, 1) > 0.5
         grayscale = random.uniform(0, 1) > 0.8
         r_resize = ((256, 256))
+        angle = np.random.randint(-15, 15)
 
         # brightness = 1
         # contrast = 1
         # hue = 0
-        t1 = VideoRandomResizedCrop(dim[0], scale=(0.7, 1.2), ratio=(0.7, 1.2))
+        t1 = VideoRandomResizedCrop(dim[0], scale=(0.8, 1.2), ratio=(0.8, 1.2))
         for img_path in images:
 
             frame = Image.open(img_path)
@@ -155,7 +156,7 @@ class Multi_SLR(Base_dataset):
                 img_tensor = video_transforms(img=frame,  bright=brightness, cont=contrast, h=hue,
                                               resized_crop=t1,
                                               augmentation=True,
-                                              normalize=normalize,to_flip=to_flip,grayscale=grayscale)
+                                              normalize=normalize,to_flip=to_flip,grayscale=grayscale,angle=angle)
                 img_sequence.append(img_tensor)
             else:
                 # TEST set  NO DATA AUGMENTATION

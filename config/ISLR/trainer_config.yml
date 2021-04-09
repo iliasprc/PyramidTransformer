@@ -4,12 +4,12 @@ trainer:
   epochs: 200 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
-  gpu: 1 # id of gpu
+  gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: True # load pretrained checkpoint
   gradient_accumulation: 2 # gradient accumulation steps
   pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained/FINAL_nslt_2000_iters=5104_top1=32.48_top5=57.31_top10=66.31.pt
-  log_interval: 1000 # print statistics every log_interval
+  log_interval: 8000 # print statistics every log_interval
   model:
     name: I3D # model name SkeletonTR
     optimizer: # optimizer configuration
@@ -24,13 +24,13 @@ trainer:
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
-      batch_size: 8 # batch size
+      batch_size: 16 # batch size
       shuffle: True # shuffle samples after every epoch
-      num_workers: 4 # number of thread for dataloader1
+      num_workers: 6 # number of thread for dataloader1
     val:
-      batch_size: 8
+      batch_size: 16
       shuffle: False
-      num_workers: 2
+      num_workers: 4
     test:
       batch_size: 4
       shuffle: False

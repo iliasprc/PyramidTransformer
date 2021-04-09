@@ -223,7 +223,7 @@ def video_tensor_shuffle(x):
     return x
 
 
-def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=False, normalize=True, to_flip=False,grayscale= False):
+def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=False, normalize=True, to_flip=False,grayscale= False,angle=0):
     """
     Image augmentation function
     Args:
@@ -240,6 +240,8 @@ def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=False
     """
     if augmentation:
         t = transforms.ToTensor()
+        if angle !=0:
+            img = transforms.functional.rotate(img,angle)
         if grayscale:
             img = transforms.functional.to_grayscale(img,3)
         if to_flip:

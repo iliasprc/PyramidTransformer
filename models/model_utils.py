@@ -282,7 +282,7 @@ def select_optimizer(model, config, checkpoint=None):
         optimizer = optim.Adam(model.parameters(), lr=float(config['optimizer']['lr']), weight_decay=0.00001)
     elif (opt == 'SGD'):
         print(" use optimizer SGD lr ", lr)
-        optimizer = optim.SGD(model.parameters(), lr=float(config['optimizer']['lr']), momentum=0.9,nesterov=True,
+        optimizer = optim.SGD(model.parameters(), lr=float(config['optimizer']['lr']), momentum=0.9,nesterov=False,
                               weight_decay=float(config['optimizer']['weight_decay']))
     elif (opt == 'RMSprop'):
         print(" use RMS  lr", lr)
