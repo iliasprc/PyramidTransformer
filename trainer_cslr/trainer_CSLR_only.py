@@ -123,7 +123,7 @@ class Trainer_CSLR_method(BaseTrainer):
 
             temp_wer, s, C, S, I, D = word_error_rate_generic(output, target, self.id2w)
 
-            # print(true_score,fake_score)
+            # self.logger.info(true_score,fake_score)
             writer_step = (epoch - 1) * self.len_epoch + batch_idx
             self.train_metrics.update_all_metrics(
                 {
@@ -134,7 +134,7 @@ class Trainer_CSLR_method(BaseTrainer):
 
         self._progress(batch_idx, epoch, metrics=self.train_metrics, mode='train', print_summary=True)
 
-        print('self.hyperparam ', self.model_Discriminator.hyperparam.item())
+        self.logger.info('self.hyperparam ', self.model_Discriminator.hyperparam.item())
 
     def _valid_epoch(self, epoch, mode, loader):
         """
@@ -157,7 +157,7 @@ class Trainer_CSLR_method(BaseTrainer):
 
 
                 temp_wer, s, C, S, I, D = word_error_rate_generic(output, target, self.id2w)
-                # print(temp_wer)
+                # self.logger.info(temp_wer)
                 self.valid_sentences.append(s)
 
                 writer_step = (epoch - 1) * len(loader) + batch_idx
@@ -174,7 +174,7 @@ class Trainer_CSLR_method(BaseTrainer):
         werr = self.valid_metrics.avg('wer')
         # if (self.args.dataset == 'phoenix2014' or self.args.dataset == 'phoenix2014_feats'):
         #     werr = evaluate_phoenix(pred_name, mode)
-        #     print('PHOENIX EVALUATION {}'.format(werr))
+        #     self.logger.info('PHOENIX EVALUATION {}'.format(werr))
         #     os.rename(pred_name, self.checkpoint_dir.joinpath( mode + '_epoch_{:d}_WER_{:.2f}_.csv'.format(epoch,
         #                                                                                                  werr)))
 
@@ -184,7 +184,7 @@ class Trainer_CSLR_method(BaseTrainer):
         for epoch in range(self.start_epoch, self.epochs):
             self._train_epoch(epoch)
 
-            print("!" * 10, "   VALIDATION   ", "!" * 10)
+            self.logger.info("!" * 10, "   VALIDATION   ", "!" * 10)
             werr = self._valid_epoch(epoch, 'dev', self.valid_data_loader)
             #werr = 0
             check_dir(self.checkpoint_dir)
@@ -192,13 +192,13 @@ class Trainer_CSLR_method(BaseTrainer):
             # TODO
             self.lr_schedulers.step(float(werr))
             # if self.do_test:
-            #     print("!" * 10, "   TESTING   ", "!" * 10)
+            #     self.logger.info("!" * 10, "   TESTING   ", "!" * 10)
             #     self._valid_epoch(epoch, 'test', self.test_data_loader)
 
     def test(self):
-        print("!" * 10, "   VALIDATION   ", "!" * 10)
+        self.logger.info("!" * 10, "   VALIDATION   ", "!" * 10)
         werr = self._valid_epoch(0, 'dev', self.valid_data_loader)
-        print("!" * 10, "   TESTING   ", "!" * 10)
+        self.logger.info("!" * 10, "   TESTING   ", "!" * 10)
         self._valid_epoch(0, 'test', self.test_data_loader)
         check_dir(self.checkpoint_dir)
         pred_name = self.checkpoint_dir.joinpath('test_predictions_epoch_{:d}_WER_{:.2f}_.csv'.format(0,
@@ -212,7 +212,7 @@ class Trainer_CSLR_method(BaseTrainer):
         if (is_best):
             self.mnt_best = werr
 
-            print("Best wer {} so far ".format(self.mnt_best))
+            self.logger.info("Best wer {} so far ".format(self.mnt_best))
 
         save_checkpoint_slr(self.model, self.optimizer, epoch, self.valid_metrics.avg('wer'),
                             self.checkpoint_dir, 'generator',
@@ -223,13 +223,13 @@ class Trainer_CSLR_method(BaseTrainer):
         if (batch_idx % self.log_step == 0):
 
             if metrics_string == None:
-                print(" No metrics")
+                self.logger.info(" No metrics")
             else:
-                print(
+                self.logger.info(
                     '{} Epoch: [{:2d}/{:2d}]\t Video [{:5d}/{:5d}]\t {}'.format(
                         mode, epoch, self.epochs, batch_idx, self.len_epoch, metrics_string))
         elif print_summary:
-            print(
+            self.logger.info(
                 '{} summary  Epoch: [{}/{}]\t {}'.format(
                     mode, epoch, self.epochs, metrics_string))
 
@@ -249,7 +249,7 @@ class Trainer_CSLR_method(BaseTrainer):
 
         for i, loader in enumerate(dataloaders):
             self.valid_metrics.reset()
-            print('Extract fetures mode {} samples {} '.format(modes[i], len(loader)))
+            self.logger.info('Extract fetures mode {} samples {} '.format(modes[i], len(loader)))
             with torch.no_grad():
                 for batch_idx, (data, target, path) in enumerate(loader):
                     data = data.to(self.device)
@@ -258,21 +258,21 @@ class Trainer_CSLR_method(BaseTrainer):
 
                     output, feats = self.model.extract_feats(data)  # , lm_inputs)
                     feats = feats.cpu().numpy()
-                    # print(feats.shape)
-                    # print(path[0].split('/')[-1])
+                    # self.logger.info(feats.shape)
+                    # self.logger.info(path[0].split('/')[-1])
                     sent = path[0].split('/')[-1]
                     scenario = path[0].split('/')[-2]
                     path = scenario + '-' + sent + '.npy'
                     save_name = os.path.join(save_folder, scenario, sent)
-                    # print(scenario,sent)
-                    # print(save_folder+modes[i]+'/'+path[0]+'.npy')
+                    # self.logger.info(scenario,sent)
+                    # self.logger.info(save_folder+modes[i]+'/'+path[0]+'.npy')
                     if not os.path.exists(save_name):
                         os.makedirs(save_name)
                     np.save(save_name + '/feats.npy', feats)
                     # loss_ctc = self.criterion(output, target).to(self.device)
 
                     temp_wer, s, C, S, I, D = word_error_rate_generic(output, target, self.id2w)
-                    # print('wer : {}'.format(temp_wer))
+                    # self.logger.info('wer : {}'.format(temp_wer))
                     self.valid_sentences.append(s)
 
                     self.valid_metrics.update_all_metrics(

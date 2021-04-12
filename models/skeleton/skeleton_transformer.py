@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from einops import repeat,rearrange
 import torch.nn.functional as F
-
+from utils.ctc_loss import CTC_Loss
 def expand_to_batch(tensor, desired_size):
     tile = desired_size // tensor.shape[0]
     return repeat(tensor, 'b ... -> (b tile) ...', tile=tile)
@@ -30,18 +30,23 @@ class PositionalEncoding1D(nn.Module):
 
 
 class SkeletonTR(nn.Module):
-    def __init__(self,planes = 512,N_classes = 226):
+    def __init__(self, mode = 'isolated',planes = 512,N_classes = 226):
         super(SkeletonTR, self).__init__()
-        self.embed = nn.Linear(27*3,planes)
+        self.embed = nn.Linear(65*3,planes)
         #self.embed = nn.Sequential(nn.Linear(133*3,planes),nn.ReLU(),nn.Dropout(0.2),nn.Linear(planes,planes))
 
-        self.pe = PositionalEncoding1D(planes)
+        self.pe = PositionalEncoding1D(planes,max_tokens=300)
         encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.1)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
        # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
        # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
 
         self.use_cls_token = True
+        self.mode = mode
+        if mode == 'isolated':
+            self.loss = nn.CrossEntropyLoss()
+        else:
+            self.loss = CTC_Loss()
         if self.use_cls_token:
             self.cls_token = nn.Parameter(torch.randn(1, planes))
             self.to_out = nn.Sequential(
@@ -53,28 +58,31 @@ class SkeletonTR(nn.Module):
 
     def forward(self, x,y=None):
         b = x.shape[0]
-        #print(x.shape)
+      #  #print(x.shape)
         x= rearrange(x,'b t k a -> b t (k a)')
         #x = self.eca1(x)
         #x = self.pool(x)  # self.relu(self.bn(self.conv(x))))
-        # print(x.shape)
+        # #print(x.shape)
         x = self.pe(self.embed(x))
-        #print(x.shape)
+        ##print(x.shape)
         #x = rearrange(x, 'b c t h w -> (t h w) b c')
 
         if self.use_cls_token:
             cls_token = repeat(self.cls_token, 'n d -> b n d', b=b)
-            #print(cls_token.shape,x.shape)
+            ##print(cls_token.shape,x.shape)
             x = torch.cat((cls_token, x), dim=1)
-            #print(x.shape)
+            ##print(x.shape)
             x= rearrange(x,'b t d -> t b d')
 
             x = self.transformer_encoder(x)
-            #print(x.shape,x[0].shape)
-            cls_token = x[0]
+            ##print(x.shape,x[0].shape)
+            cls_token = x
+            if self.mode == 'isolated':
+                cls_token = x[0]
+
             y_hat = self.to_out(cls_token)
         else:
-            # print(x.shape)
+            # #print(x.shape)
             x = rearrange(x, 'b t d -> t b d')
 
             x = self.transformer_encoder(x)
@@ -83,7 +91,171 @@ class SkeletonTR(nn.Module):
             y_hat = self.classifier(x)
 
         if y!=None:
-            loss = F.cross_entropy(y_hat, y.squeeze(-1))
+            loss = self.loss(y_hat, y)
+            return y_hat, loss
+        return y_hat
+
+
+
+# class CSLRSkeletonTR(nn.Module):
+#     def __init__(self, planes = 512,N_classes = 226):
+#         super(CSLRSkeletonTR, self).__init__()
+#         self.embed = nn.Linear(65*3,planes)
+#         #self.embed = nn.Sequential(nn.Linear(133*3,planes),nn.ReLU(),nn.Dropout(0.2),nn.Linear(planes,planes))
+#         self.temp_channels = planes
+#
+#         self.tc_kernel_size = 5
+#         self.tc_pool_size = 2
+#         self.padding = 1
+#         self.temporal = torch.nn.Sequential(
+#             nn.InstanceNorm1d(planes),
+#             nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+#             nn.ReLU(),
+#             nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
+#             nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+#             nn.ReLU(),
+#             nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size))
+#         self.pe = PositionalEncoding1D(planes,max_tokens=300)
+#         encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.1)
+#         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+#        # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
+#        # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
+#
+#         self.use_cls_token = True
+#
+#         self.loss = CTC_Loss()
+#         if self.use_cls_token:
+#             self.cls_token = nn.Parameter(torch.randn(1, planes))
+#             self.to_out = nn.Sequential(
+#                 nn.LayerNorm(planes),
+#                 nn.Linear(planes, N_classes)
+#             )
+#         else:
+#             self.classifier = nn.Linear(planes,N_classes)
+#
+#     def forward(self, x,y=None):
+#         b = x.shape[0]
+#       #  #print(x.shape)
+#         x= rearrange(x,'b t k a -> b t (k a)')
+#         #x = self.eca1(x)
+#         #x = self.pool(x)  # self.relu(self.bn(self.conv(x))))
+#         # #print(x.shape)
+#         x = self.embed(x)
+#
+#         x = self.temporal(rearrange(x,'b t c -> b c t'))
+#         x = self.pe(rearrange(x,'b c t -> b t c'))
+#         ##print(x.shape)
+#         #x = rearrange(x, 'b c t h w -> (t h w) b c')
+#
+#         if self.use_cls_token:
+#             cls_token = repeat(self.cls_token, 'n d -> b n d', b=b)
+#             ##print(cls_token.shape,x.shape)
+#             x = torch.cat((cls_token, x), dim=1)
+#             ##print(x.shape)
+#             x= rearrange(x,'b t d -> t b d')
+#
+#             x = self.transformer_encoder(x)
+#             ##print(x.shape,x[0].shape)
+#             cls_token = x
+#
+#
+#             y_hat = self.to_out(cls_token)
+#         else:
+#             # #print(x.shape)
+#             x = rearrange(x, 'b t d -> t b d')
+#
+#             x = self.transformer_encoder(x)
+#             #x = self.transformer_encoder(rearrange(x, 't b d -> d b t'))
+#             x = torch.mean(x, dim=0)
+#             y_hat = self.classifier(x)
+#
+#         if y!=None:
+#             loss = self.loss(y_hat, y)
+#             return y_hat, loss
+#         return y_hat
+#
+
+
+class CSLRSkeletonTR(nn.Module):
+    def __init__(self, planes = 512,N_classes = 226):
+        super(CSLRSkeletonTR, self).__init__()
+        self.embed = nn.Linear(65*3,planes)
+        #self.embed = nn.Sequential(nn.Linear(65*3,planes),nn.Dropout(0.2),nn.LayerNorm(planes))
+        self.temp_channels = planes
+
+        self.tc_kernel_size = 5
+        self.tc_pool_size = 2
+        self.padding = 1
+        # self.temporal = torch.nn.Sequential(
+        #     nn.InstanceNorm1d(planes),
+        #     nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+        #     nn.ReLU(),
+        #     nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
+        #     nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+        #     nn.ReLU(),
+        #     nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size))
+        self.pe = PositionalEncoding1D(planes,max_tokens=300)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.1)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+       # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
+       # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
+
+        self.use_cls_token = True
+        self.window_size = 16
+        self.stride = 8
+        self.loss = CTC_Loss()
+        if self.use_cls_token:
+            self.cls_token = nn.Parameter(torch.randn(1, planes))
+            self.to_out = nn.Sequential(
+                nn.LayerNorm(planes),
+                nn.Linear(planes, N_classes)
+            )
+        else:
+            self.classifier = nn.Linear(planes,N_classes)
+
+    def forward(self, x,y=None):
+
+        #print(x.shape)
+        x1 = x.unfold(1, self.window_size, self.stride).squeeze(0)
+        #print(x1.shape)
+        x1 = rearrange(x1,'w k a t -> w t (k a)')
+        x= x1# rearrange(x,'b t k a -> b t (k a)')
+        #print(x1.shape)
+        #x = self.eca1(x)
+        #x = self.pool(x)  # self.relu(self.bn(self.conv(x))))
+        # #print(x.shape)
+        x = self.embed(x)
+        b = x.shape[0]
+        x = rearrange(x,'b t c -> b c t')
+        x = self.pe(rearrange(x,'b c t -> b t c'))
+        ##print(x.shape)
+        #x = rearrange(x, 'b c t h w -> (t h w) b c')
+
+        if self.use_cls_token:
+            cls_token = repeat(self.cls_token, 'n d -> b n d', b=b)
+            #print(cls_token.shape,x.shape)
+            x = torch.cat((cls_token, x), dim=1)
+            ##print(x.shape)
+            x= rearrange(x,'b t d -> t b d')
+
+            x = self.transformer_encoder(x)
+            #print(x.shape,x[0].shape)
+            cls_token = x[0]
+
+
+            y_hat = self.to_out(cls_token).unsqueeze(1)
+            #print('yaht',y_hat.shape)
+        else:
+            # #print(x.shape)
+            x = rearrange(x, 'b t d -> t b d')
+
+            x = self.transformer_encoder(x)
+            #x = self.transformer_encoder(rearrange(x, 't b d -> d b t'))
+            x = torch.mean(x, dim=0)
+            y_hat = self.classifier(x)
+
+        if y!=None:
+            loss = self.loss(y_hat, y)
             return y_hat, loss
         return y_hat
 

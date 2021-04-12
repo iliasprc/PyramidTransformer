@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 from models.vmz.layers import Bottleneck, Conv3DDepthwise, BasicStem, BasicStem_Pool
+from models.cslr.layers import PositionalEncoding1D
 from utils.ctc_loss import CTC_Loss
 model_urls = {
     "r2plus1d_34_8_ig65m": "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch-9bae36ae.pth",
@@ -60,7 +61,8 @@ class CSLRVideoResNet(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=2048, dim_feedforward=1024, nhead=8, dropout=0.2)
+        self.pe = PositionalEncoding1D(2048,dropout=0.1,max_tokens=300)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=2048, dim_feedforward=2048, nhead=8, dropout=0.2)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1)
         # init weights
         self.loss = CTC_Loss()
@@ -89,9 +91,12 @@ class CSLRVideoResNet(nn.Module):
         x = self.avgpool(x)
         #print(x.shape)
         # Flatten the layer to fc
-        x = x.flatten(1)
+        x = rearrange(x.flatten(1).unsqueeze(1),'t b c -> b t c')
+        x = self.pe(x)
+        x = rearrange(x,'b t c -> t b c')
         #print(x.shape)
-        x = self.transformer_encoder(x.unsqueeze(1))
+
+        x = self.transformer_encoder(x)
         y_hat = self.fc(x)
        # print(y_hat.shape)
         if y!=None:

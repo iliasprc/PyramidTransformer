@@ -108,11 +108,11 @@ def main():
 
 
     if (config.load):
-        model.fc = torch.nn.Linear(1024, 2042)
+        model.fc = torch.nn.Linear(2048,311)
 
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
 
-        model.fc = torch.nn.Linear(1024, 311)
+        model.fc = torch.nn.Linear(2048,311)
 
     else:
         pth_file = None

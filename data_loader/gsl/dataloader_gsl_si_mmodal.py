@@ -5,13 +5,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 import glob
 import os
 import random
-from omegaconf import OmegaConf
 import numpy as np
 import torch
 from PIL import Image
 from base.base_data_loader import Base_dataset
-from data_loader.loader_utils import multi_label_to_index, pad_video, video_transforms, sampling, VideoRandomResizedCrop,read_gsl_continuous,read_gsl_continuous_classes
-
+from data_loader.loader_utils import multi_label_to_index, pad_video, video_transforms, VideoRandomResizedCrop, \
+    sampling_mode, pad_skeleton, skeleton_augment
+from data_loader.gsl.utils import read_json_sequence
 
 feats_path = 'gsl_cont_features/'
 train_prefix = "train"
@@ -23,7 +23,7 @@ test_filepath = "data_loader/gsl/files/gsl_split_SI_test.csv"
 
 
 class GSL_SI(Base_dataset):
-    def __init__(self, config,  mode, classes):
+    def __init__(self, config, mode, classes):
         """
 
         Args:
@@ -56,9 +56,8 @@ class GSL_SI(Base_dataset):
 
         print(f"{len(self.list_IDs)} {self.mode} instances")
 
-
         if (self.modality == 'RGB'):
-            self.data_path = os.path.join(self.config.dataset.input_data, 'GSL_continuous')
+            self.data_path = os.path.join(self.config.dataset.input_data, '')
             self.get = self.video_loader
         elif (self.modality == 'features'):
             self.data_path = os.path.join(self.config.dataset.input_data, '')
@@ -69,53 +68,42 @@ class GSL_SI(Base_dataset):
         return len(self.list_IDs)
 
     def __getitem__(self, index):
+
         return self.get(index)
-
-    def feature_loader(self, index):
-        folder_path = os.path.join(self.data_path, self.list_IDs[index])
-        # print(folder_path)
-
-        y = multi_label_to_index(classes=self.classes, target_labels=self.list_glosses[index])
-
-
-        x = torch.FloatTensor(np.load(folder_path + '.npy')).squeeze(0)
-
-        return x, y
 
     def video_loader(self, index):
 
-        x = self.load_video_sequence(path=self.list_IDs[index],
-                                     img_type='jpg')
+        vid_tensor, skeleton = self.load_mmodal(path=self.list_IDs[index],
+                                                img_type='jpg')
         y = multi_label_to_index(classes=self.classes, target_labels=self.list_glosses[index])
 
-        return x, y
+        return vid_tensor, skeleton, y
 
-    def load_video_sequence(self, path,
-                            img_type='png'):
+    def load_mmodal(self, path,
+                    img_type='png'):
 
-        images = sorted(glob.glob(os.path.join(self.data_path, path, ) + '/*' + img_type))
+        images = sorted(glob.glob(os.path.join(self.data_path,'GSL_continuous', path, ) + '/*' + img_type))
 
         h_flip = False
         img_sequence = []
         # print(images)
         if (len(images) < 1):
             print(os.path.join(self.data_path, path))
-
-
+        T = len(images)
+        num_of_images = list(range(T))
         if (self.augmentation):
             ## training set temporal  AUGMENTATION
-            temporal_augmentation = int((np.random.randint(80, 100) / 100.0) * len(images))
-            if (temporal_augmentation > 15):
-                images = sorted(random.sample(images, k=temporal_augmentation))
-            if (len(images) > self.seq_length):
-                # random frame sampling
-                images = sorted(random.sample(images, k=self.seq_length))
+
+            if len(num_of_images) > self.seq_length:
+                num_of_images = sampling_mode(True, num_of_images, self.seq_length)
+                # images = images[num_of_images]
 
         else:
             # test uniform sampling
-            if (len(images) > self.seq_length):
-                images = sorted(sampling(images, self.seq_length))
-
+            if len(num_of_images) > self.seq_length:
+                num_of_images = sampling_mode(False, num_of_images, self.seq_length)
+        images = [images[i] for i in num_of_images]
+        print(images)
         i = np.random.randint(0, 30)
         j = np.random.randint(0, 30)
         brightness = 1 + random.uniform(-0.2, +0.2)
@@ -136,8 +124,7 @@ class GSL_SI(Base_dataset):
             ## CROP BOUNDING BOX
 
             frame1 = np.array(frame_o)
-            #print(frame1.shape)
-
+            # print(frame1.shape)
 
             frame1 = frame1[:, crop_size:648 - crop_size]
             frame = Image.fromarray(frame1)
@@ -159,7 +146,7 @@ class GSL_SI(Base_dataset):
                 # TEST set  NO DATA AUGMENTATION
                 frame = frame.resize(self.dim)
 
-                img_tensor = video_transforms(img=frame,  bright=1, cont=1, h=0,
+                img_tensor = video_transforms(img=frame, bright=1, cont=1, h=0,
                                               augmentation=False,
                                               normalize=self.normalize)
                 img_sequence.append(img_tensor)
@@ -168,10 +155,71 @@ class GSL_SI(Base_dataset):
         X1 = torch.stack(img_sequence).float()
 
         if (self.padding):
-            X1 = pad_video(X1, padding_size=pad_len, padding_type='images')
+            X1 = pad_video(X1, padding_size=pad_len, padding_type='zeros')
         if (len(images) < 16):
-            X1 = pad_video(X1, padding_size=25 - len(images), padding_type='images')
-        #print(X1.shape)
-        return X1.permute(1,0,2,3)
+            X1 = pad_video(X1, padding_size=25 - len(images), padding_type='zeros')
+        # print(X1.shape)
+
+        path = os.path.join(self.data_path,'GSL_tf_lite_keypoints', path)
+        pose, lh, rh = read_json_sequence(path)
+
+        # print(pose.shape, lh.shape, rh.shape)
+        x = torch.from_numpy(np.concatenate((pose, lh, rh), axis=1)[:, :, :3]).float()
+        T = x.shape[0]
+        num_of_images = list(range(T))
+        if self.mode == 'train':
+            if T > self.seq_length:
+                num_of_images = sampling_mode(True, num_of_images, self.seq_length)
+                x = x[num_of_images, :, :]
+            x = skeleton_augment(x)
+        else:
+            if T > self.seq_length:
+                num_of_images = sampling_mode(False, num_of_images, self.seq_length)
+                x = x[num_of_images, :, :]
+        x = (x - self.mean) / self.std
+        # self.mean+= x.mean()
+        # self.mean1+=x.view(-1,3).mean(dim=0)
+        # self.std1+=x.view(-1,3).std(dim=0)
+        # print(self.mean1/self.count,self.std1/self.count)
+        # # self.std +=x.std()
+        # self.count+=1
+        # print(self.mean/self.count,self.std/self.count)
+        if x.shape[0] < 16:
+            x = pad_skeleton(x, 16 - x.shape[0])
+
+        return X1.permute(1, 0, 2, 3), x
 
 
+def read_gsl_continuous_classes(path):
+    indices, classes = [], []
+    classes.append('blank')
+    indices.append(0)
+    data = open(path, 'r').read().splitlines()
+    count = 1
+    for d in data:
+        label = d
+
+        indices.append(count)
+        classes.append(label)
+        count += 1
+
+    id2w = dict(zip(indices, classes))
+
+    return indices, classes, id2w
+
+
+def read_gsl_continuous(csv_path):
+    paths, glosses_list = [], []
+    classes = []
+    data = open(csv_path, 'r').read().splitlines()
+    for item in data:
+        if (len(item.split('|')) < 2):
+            print("\n {} {} {} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n".format(item, path, csv_path))
+        path, glosses = item.split('|')
+        # path = path.replace(' GSL_continuous','GSL_continuous')
+
+        paths.append(path)
+        # print(path)
+
+        glosses_list.append(glosses)
+    return paths, glosses_list

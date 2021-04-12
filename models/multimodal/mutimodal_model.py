@@ -247,3 +247,5 @@ class RGBD_Transformer(BaseModel):
         logits = self.classifier(concatenated)
         loss = F.cross_entropy(logits, y.squeeze(-1).to(self.device0))
         return logits, loss, y
+
+

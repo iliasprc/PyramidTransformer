@@ -10,6 +10,43 @@ from PIL import Image
 from torchvision import transforms
 
 
+
+def read_gsl_continuous_classes(path):
+    indices, classes = [], []
+    classes.append('blank')
+    indices.append(0)
+    data = open(path, 'r').read().splitlines()
+    count = 1
+    for d in data:
+        label = d
+
+        indices.append(count)
+        classes.append(label)
+        count += 1
+
+    id2w = dict(zip(indices, classes))
+
+    return indices, classes, id2w
+
+
+
+def read_gsl_continuous(csv_path):
+    paths, glosses_list = [], []
+    classes = []
+    data = open(csv_path, 'r').read().splitlines()
+    for item in data:
+        if (len(item.split('|')) < 2):
+            print("\n {} {} {} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n".format(item, path, csv_path))
+        path, glosses = item.split('|')
+        # path = path.replace(' GSL_continuous','GSL_continuous')
+
+        paths.append(path)
+        # print(path)
+
+        glosses_list.append(glosses)
+    return paths, glosses_list
+
+
 def read_autsl_csv(csv_path):
     paths, glosses_list = [], []
     classes = []
@@ -204,6 +241,32 @@ def pad_video(x, padding_size=0, padding_type='images'):
             return X
     return x
 
+
+
+def skeleton_augment(x):
+    if random.uniform(0, 1) > 0.5:
+        # flip skeleton x and y only
+        x[...,0:2] = -x[...,0:2]
+    if random.uniform(0, 1) > 0.7:
+        new_pos = torch.rand(2)/20.0
+        x[...,0:2]+=new_pos
+
+    return x
+
+
+
+def pad_skeleton(x, padding_size=0):
+    assert len(x.shape) == 3
+    if padding_size != 0:
+        if random.uniform(0, 1) > 0.5:
+            pad_img = x[0]
+            padx = pad_img.repeat(padding_size, 1, 1)
+            X = torch.cat((padx, x),dim=0)
+        else:
+            pad_img = x[-1]
+            padx = pad_img.repeat(padding_size, 1, 1)
+            X = torch.cat((x, padx),dim=0)
+    return X
 
 def video_tensor_shuffle(x):
     # print(x.size())

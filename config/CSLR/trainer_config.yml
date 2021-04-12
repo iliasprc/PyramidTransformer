@@ -8,25 +8,25 @@ trainer_cslr:
   save: True # save checkpoint
   load: True # load pretrained checkpoint
   gradient_accumulation: 2 # gradient accumulation steps
-  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_GoogLeNet_TConvs/dataset_MULTI_ISLR/date_06_04_2021_13.12.36/best_model_epoch_7.pth
-  log_interval: 2000 # print statistics every log_interval
+  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_IR_CSN_152/dataset_GSL_ISO/date_08_04_2021_09.44.16/_model_epoch_5.pth
+  log_interval: 1000 # print statistics every log_interval
   model:
-    name: GoogLeNet_TConvs # model name
+    name: IR_CSN_152 # model name
     optimizer: # optimizer configuration
       type: Adam # optimizer type
-      lr: 0.5e-5 # learning rate
+      lr: 1e-4 # learning rate
       weight_decay: 0.000001 # weight decay
     scheduler: # learning rate scheduler
       type: ReduceLRonPlateau # type of scheduler
       scheduler_factor: 0.5 # learning rate change ratio
-      scheduler_patience: 0 # patience for some epochs
-      scheduler_min_lr: 1e-3 # minimum learning rate value
+      scheduler_patience: 1 # patience for some epochs
+      scheduler_min_lr: 1e-5 # minimum learning rate value
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
       batch_size: 1 # batch size
-      shuffle: False # shuffle samples after every epoch
-      num_workers: 2 # number of thread for dataloader1
+      shuffle: True # shuffle samples after every epoch
+      num_workers: 4 # number of thread for dataloader1
     val:
       batch_size: 1
       shuffle: False
@@ -36,7 +36,7 @@ trainer_cslr:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets/GSL_continuous/
+    input_data: /home/papastrat/Desktop/ilias/datasets/
     name: GSL_SI # dataset name
     modality: RGB # type of modality
     classes: 311 # number of classes

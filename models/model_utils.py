@@ -9,7 +9,7 @@ from models.multimodal.mutimodal_model import RGBD_Transformer
 from models.vmz.eca_ir_csn_152 import eca_ir_csn_152
 from models.vmz.ir_csn_152 import ir_csn_152
 from models.vmz.pyramid_transformer import ir_csn_152_transformer
-from models.skeleton.skeleton_transformer import SkeletonTR
+from models.skeleton.skeleton_transformer import SkeletonTR,CSLRSkeletonTR
 from models.cslr.googlenet_tcl import GoogLeNet_TConvs
 from models.gcn.model.decouple_gcn_attn import STGCN,STGCN_Transformer
 
@@ -53,6 +53,8 @@ def CSLR_video_encoder(config, N_classes):
         return GoogLeNet_TConvs(N_classes=N_classes,mode='continuous')
     elif config.model.name == 'CSLR_I3D':
         return SLR_I3D()
+    elif config.model.name == 'SkeletonTR':
+        return CSLRSkeletonTR(N_classes = N_classes)
     elif config.model.name == 'IR_CSN_152_Transformer':
         from models.cslr.cslr_pyramid_transformer import cslr_ir_csn_152_transformer
         return cslr_ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
@@ -150,7 +152,7 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     """
     checkpoint1 = torch.load(checkpoint, map_location='cpu')
     print(checkpoint1.keys())
-    pretrained_dict = checkpoint1#['model_dict']
+    pretrained_dict = checkpoint1['model_dict']
     model_dict = model.state_dict()
     print(pretrained_dict.keys())
     print(model_dict.keys())
