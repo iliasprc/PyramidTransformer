@@ -4,9 +4,36 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from einops import repeat, rearrange
 
 from utils.ctc_loss import CTC_Loss
-from einops import rearrange
+
+
+def expand_to_batch(tensor, desired_size):
+    tile = desired_size // tensor.shape[0]
+    return repeat(tensor, 'b ... -> (b tile) ...', tile=tile)
+
+
+class PositionalEncoding1D(nn.Module):
+
+    def __init__(self, dim, dropout=0.1, max_tokens=64):
+        super(PositionalEncoding1D, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(1, max_tokens, dim)
+        position = torch.arange(0, max_tokens, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, dim, 2).float() * (-torch.log(torch.Tensor([10000.0])) / dim))
+        pe[..., 0::2] = torch.sin(position * div_term)
+        pe[..., 1::2] = torch.cos(position * div_term)
+        # pe = pe.unsqueeze(0).transpose(0, 1)
+        self.pe = pe.cuda()
+
+    def forward(self, x):
+        batch, seq_tokens, _ = x.size()
+        x = x + expand_to_batch(self.pe[:, :seq_tokens, :], desired_size=batch)
+        return self.dropout(x)
+
+
 class MaxPool3dSamePadding(nn.MaxPool3d):
 
     def compute_pad(self, dim, s):
@@ -214,8 +241,8 @@ class InceptionI3d(nn.Module):
         self._final_endpoint = final_endpoint
         self.logits = None
         self.temp_resolution = temporal_resolution
-        last_duration = int(math.ceil(16/ 8))
-        #if (self.mode == 'unfold' or self.mode == 'features'):
+        last_duration = int(math.ceil(16 / 8))
+        # if (self.mode == 'unfold' or self.mode == 'features'):
         self.window_size = 16
         self.stride = 8
         print("Train with sliding window size {} stride {}".format(self.window_size, self.stride))
@@ -320,7 +347,8 @@ class InceptionI3d(nn.Module):
         #     num_layers=self.num_layers,
         #     dropout=self.rnn_dropout,
         #     bidirectional=True)
-        #self.freeze_param()
+        # self.freeze_param()
+
     def replace_logits(self, num_classes):
         self._num_classes = num_classes
         self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
@@ -335,11 +363,11 @@ class InceptionI3d(nn.Module):
         for k in self.end_points.keys():
             self.add_module(k, self.end_points[k])
 
-    def forward(self, x , y=None):
+    def forward(self, x, y=None):
 
         if (self.mode == 'isolated'):
-            #with torch.no_grad():
-            x = x#.permute(0, 2, 1, 3, 4)
+            # with torch.no_grad():
+            x = x  # .permute(0, 2, 1, 3, 4)
             for end_point in self.VALID_ENDPOINTS:
                 if end_point in self.end_points:
                     # print(x.size())
@@ -348,18 +376,18 @@ class InceptionI3d(nn.Module):
             x = self.dropout(self.avg_pool(x))
 
             logits = self.logits(x)
-            y_hat =  logits.squeeze(-1).squeeze(-1).squeeze(-1)
-            if y!=None:
+            y_hat = logits.squeeze(-1).squeeze(-1).squeeze(-1)
+            if y != None:
                 loss = F.cross_entropy(y_hat, y.squeeze(-1))
                 return y_hat, loss
             return y_hat
         elif (self.mode == 'continuous'):
-            #print(x.shape)
+            # print(x.shape)
             x = x.unfold(2, self.window_size, self.stride).squeeze(0)
-            #print(x.shape)
+            # print(x.shape)
             x = rearrange(x, 'c n h w t -> n c t h w')
-            #print(x.shape)
-            #with torch.no_grad():
+            # print(x.shape)
+            # with torch.no_grad():
             for end_point in self.VALID_ENDPOINTS:
                 if end_point in self.end_points:
                     # print(x.size())
@@ -368,15 +396,15 @@ class InceptionI3d(nn.Module):
             x = self.dropout(self.avg_pool(x))
 
             # logits = self.logits(x)
-           # print(x.size())
+            # print(x.size())
             final_time, dim, _, _, _ = x.size()
 
             features = rearrange(x, 't dim d h w -> t (d h w) dim')
-            #print(features.size())
+            # print(features.size())
             return features
             y_hat = self.logits(x)
-            y_hat = rearrange(y_hat,'t classes d h w -> t (d h w) classes')
-            #print(y_hat.size())
+            y_hat = rearrange(y_hat, 't classes d h w -> t (d h w) classes')
+            # print(y_hat.size())
             if y != None:
                 loss_ctc = self.loss(y_hat, y)
                 return y_hat, loss_ctc
@@ -404,15 +432,14 @@ class InceptionI3d(nn.Module):
 
     def freeze_param(self):
         count = 0
-        for name,param in self.named_parameters():
+        for name, param in self.named_parameters():
             count += 1
             print(name)
-            if 'Conv3d_' in name or 'Mixed_3' in name :
+            if 'Conv3d_' in name or 'Mixed_3' in name:
                 param.requires_grad = False
 
             else:
                 param.requires_grad = True
-
 
 
 class SLR_I3D(nn.Module):
@@ -423,11 +450,10 @@ class SLR_I3D(nn.Module):
         self.n_classes = num_classes
         self.mode = mode
 
-
         self.rnn_dropout = 0.4
         self.bidirectional = True
 
-        self.cnn = InceptionI3d(num_classes=100, temporal_resolution=temporal_resolution, mode=mode,
+        self.cnn = InceptionI3d(num_classes=100, temporal_resolution=temporal_resolution, mode='continuous',
                                 in_channels=3)
         print("load imagenet  weights")
         # cpkt = torch.load('/home/papastrat/Desktop/ilias/SLR_checkpoints/i3d_ms_asl100_.pth',
@@ -435,37 +461,66 @@ class SLR_I3D(nn.Module):
         # self.cnn.load_state_dict(
         #     cpkt['model_dict'])
         self.cnn.replace_logits(self.n_classes)
+        self.use_transformer = True
+        if not self.use_transformer:
+            self.rnn = nn.LSTM(
+                input_size=1024,
+                hidden_size=self.hidden_size,
+                num_layers=self.num_layers,
+                dropout=self.rnn_dropout,
+                bidirectional=True)
+        else:
+            self.pe = PositionalEncoding1D(1024, dropout=0.1, max_tokens=300)
+            encoder_layer = nn.TransformerEncoderLayer(d_model=1024, dim_feedforward=2048, nhead=8, dropout=0.2)
+            self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1)
+            #self.cls_token = nn.Parameter(torch.randn(1, 1024))
+            self.fc=nn.Linear(1024,311)
 
-        self.rnn = nn.LSTM(
-            input_size=1024,
-            hidden_size=self.hidden_size,
-            num_layers=self.num_layers,
-            dropout=self.rnn_dropout,
-            bidirectional=True)
-        #self.freeze_param()
+        self.freeze_param()
 
         self.loss = CTC_Loss(average=True)
-    def forward(self, x,y=None):
 
-        # batch_size, time, channels, height, width = x.size()
+    def forward(self, x, y=None):
+
+        #batch_size, time, channels, height, width = x.size()
         vid = x.size()
         #print('input ',vid)
-        x = self.cnn(x)
-        #print("Before after {}".format(x.size()))
-        if (self.mode == 'isolated'):
+        with torch.no_grad():
+            x = self.cnn(x)
+        b = x.shape[0]
+        #print('after cnn',x.shape)
+        # print("Before after {}".format(x.size()))
 
-            return F.log_softmax(torch.mean(x, dim=-1), dim=-1)
-        elif (self.mode == 'continuous'):
-            #print(vid,'----> ',x.size())
+        # print(vid,'----> ',x.size())
+        if not self.use_transformer:
             r_out, (h_n, h_c) = self.rnn(x)
-            #r_out = x
+            # r_out = x
 
             x = self.cnn.logits(r_out.permute(1, 2, 0).unsqueeze(-1).unsqueeze(-1))
-            #print('logits ',x.size())
+            # print('logits ',x.size())
             y_hat = x.squeeze(-1).squeeze(-1).permute(2, 0, 1)
-            if y!=None:
-                loss_ctc = self.loss(y_hat,y)
-                return y_hat,loss_ctc
+            if y != None:
+                loss_ctc = self.loss(y_hat, y)
+                return y_hat, loss_ctc
+            return y_hat
+        else:
+            x = rearrange(x, 't b c -> b t c')
+            x = self.pe(x)
+
+            x = rearrange(x, 'b t c -> t b c')
+
+            #print('befor tr,',x.shape)
+            #
+
+            x = self.transformer_encoder(x)
+
+
+            #x = rearrange(x, 'b t d -> t b d')
+            #print('before fc ',x.shape)
+            y_hat = self.fc(x)
+            if y != None:
+                loss_ctc = self.loss(y_hat, y)
+                return y_hat, loss_ctc
             return y_hat
 
     def freeze_param(self):

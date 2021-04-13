@@ -59,6 +59,9 @@ def CSLR_video_encoder(config, N_classes):
         from models.cslr.cslr_pyramid_transformer import cslr_ir_csn_152_transformer
         return cslr_ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                                       num_classes=N_classes)
+    elif config.model.name == 'RGBSK':
+        from models.multimodal.mmodal_rgbsk import RGBSK_model
+        return RGBSK_model(N_classes=N_classes)
 
 def ISLR_video_encoder(config, N_classes):
     from models.cslr.i3d import InceptionI3d,SLR_I3D

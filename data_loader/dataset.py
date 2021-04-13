@@ -212,3 +212,20 @@ def cslr_datasets(config):
         test_set = GSL_SI_Skeleton(config=config,  mode=test_prefix, classes=classes)
         test_generator = data.DataLoader(test_set, **test_params)
         return training_generator, validation_generator, test_generator, classes,id2w
+    elif config.dataset.name == 'GSL_SI_MModal':
+        from data_loader.gsl.dataloader_gsl_si_mmodal import GSL_SI_MModal
+        train_prefix = "train"
+        val_prefix = "val"
+        test_prefix = "test"
+
+        indices, classes, id2w = read_gsl_continuous_classes(
+            os.path.join(config.cwd, 'data_loader/gsl/files/continuous_classes.csv'))
+        w2id = {v: k for k, v in id2w.items()}
+
+        training_set = GSL_SI_MModal(config=config,  mode=train_prefix, classes=classes)
+        training_generator = data.DataLoader(training_set, **train_params)
+        validation_set = GSL_SI_MModal(config=config,  mode=val_prefix, classes=classes)
+        validation_generator = data.DataLoader(validation_set, **val_params)
+        test_set = GSL_SI_MModal(config=config,  mode=test_prefix, classes=classes)
+        test_generator = data.DataLoader(test_set, **test_params)
+        return training_generator, validation_generator, test_generator, classes,id2w

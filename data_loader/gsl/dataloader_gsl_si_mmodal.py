@@ -22,7 +22,7 @@ val_filepath = "data_loader/gsl/files/gsl_split_SI_dev.csv"
 test_filepath = "data_loader/gsl/files/gsl_split_SI_test.csv"
 
 
-class GSL_SI(Base_dataset):
+class GSL_SI_MModal(Base_dataset):
     def __init__(self, config, mode, classes):
         """
 
@@ -32,7 +32,7 @@ class GSL_SI(Base_dataset):
             mode:
             classes:
         """
-        super(GSL_SI, self).__init__(config, mode, classes)
+        super(GSL_SI_MModal, self).__init__(config, mode, classes)
 
         cwd_path = config.cwd
 
@@ -44,7 +44,7 @@ class GSL_SI(Base_dataset):
         self.normalize = self.config.dataset.normalize
         self.padding = self.config.dataset.padding
         self.augmentation = self.config.dataset[self.mode]['augmentation']
-        self.return_context = False
+
         if self.mode == train_prefix:
             self.list_IDs, self.list_glosses = read_gsl_continuous(os.path.join(config.cwd, train_filepath))
 
@@ -63,7 +63,8 @@ class GSL_SI(Base_dataset):
             self.data_path = os.path.join(self.config.dataset.input_data, '')
 
             self.get = self.feature_loader
-
+        self.mean = torch.tensor([0.498,0.507,-0.129],dtype=torch.float32)
+        self.std =torch.tensor( [0.085,0.229,0.1910],dtype=torch.float32)
     def __len__(self):
         return len(self.list_IDs)
 
@@ -93,7 +94,9 @@ class GSL_SI(Base_dataset):
         num_of_images = list(range(T))
         if (self.augmentation):
             ## training set temporal  AUGMENTATION
-
+            temporal_augmentation = int((np.random.randint(70, 100) / 100.0) * T)
+            if (temporal_augmentation > 15):
+                num_of_images = sampling_mode(True, num_of_images, temporal_augmentation)
             if len(num_of_images) > self.seq_length:
                 num_of_images = sampling_mode(True, num_of_images, self.seq_length)
                 # images = images[num_of_images]
@@ -103,7 +106,7 @@ class GSL_SI(Base_dataset):
             if len(num_of_images) > self.seq_length:
                 num_of_images = sampling_mode(False, num_of_images, self.seq_length)
         images = [images[i] for i in num_of_images]
-        print(images)
+        #print(T,len(images))
         i = np.random.randint(0, 30)
         j = np.random.randint(0, 30)
         brightness = 1 + random.uniform(-0.2, +0.2)
@@ -157,7 +160,7 @@ class GSL_SI(Base_dataset):
         if (self.padding):
             X1 = pad_video(X1, padding_size=pad_len, padding_type='zeros')
         if (len(images) < 16):
-            X1 = pad_video(X1, padding_size=25 - len(images), padding_type='zeros')
+            X1 = pad_video(X1, padding_size=16 - len(images), padding_type='zeros')
         # print(X1.shape)
 
         path = os.path.join(self.data_path,'GSL_tf_lite_keypoints', path)
@@ -166,16 +169,16 @@ class GSL_SI(Base_dataset):
         # print(pose.shape, lh.shape, rh.shape)
         x = torch.from_numpy(np.concatenate((pose, lh, rh), axis=1)[:, :, :3]).float()
         T = x.shape[0]
-        num_of_images = list(range(T))
-        if self.mode == 'train':
-            if T > self.seq_length:
-                num_of_images = sampling_mode(True, num_of_images, self.seq_length)
-                x = x[num_of_images, :, :]
+        #num_of_images = list(range(T))
+        if (self.augmentation):
+            #if T > self.seq_length:
+                #num_of_images = sampling_mode(True, num_of_images, self.seq_length)
+            x = x[num_of_images, :, :]
             x = skeleton_augment(x)
         else:
-            if T > self.seq_length:
-                num_of_images = sampling_mode(False, num_of_images, self.seq_length)
-                x = x[num_of_images, :, :]
+            # if T > self.seq_length:
+            #     num_of_images = sampling_mode(False, num_of_images, self.seq_length)
+            x = x[num_of_images, :, :]
         x = (x - self.mean) / self.std
         # self.mean+= x.mean()
         # self.mean1+=x.view(-1,3).mean(dim=0)
@@ -186,7 +189,8 @@ class GSL_SI(Base_dataset):
         # print(self.mean/self.count,self.std/self.count)
         if x.shape[0] < 16:
             x = pad_skeleton(x, 16 - x.shape[0])
-
+        #print(X1.shape,x.shape)
+        assert X1.shape[0] == x.shape[0]
         return X1.permute(1, 0, 2, 3), x
 
 

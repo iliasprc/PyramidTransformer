@@ -9,14 +9,14 @@ from models.model_utils import save_checkpoint_slr
 from utils.util import MetricTracker
 from utils.metrics import word_error_rate_generic
 
-class Trainer_CSLR_method(BaseTrainer):
+class Trainer_CSLR_MModal(BaseTrainer):
     """
     Trainer class
     """
 
     def __init__(self, config, model, optimizer, data_loader, writer, id2w, checkpoint_dir, logger,
                  valid_data_loader=None, test_data_loader=None, lr_schedulers=None, metric_ftns=None):
-        super(Trainer_CSLR_method, self).__init__(config, data_loader, writer, checkpoint_dir, logger,
+        super(Trainer_CSLR_MModal, self).__init__(config, data_loader, writer, checkpoint_dir, logger,
                                       valid_data_loader=valid_data_loader,
                                       test_data_loader=test_data_loader, metric_ftns=metric_ftns)
         if (self.config.cuda):
@@ -62,13 +62,13 @@ class Trainer_CSLR_method(BaseTrainer):
 
         self.train_metrics.reset()
         n_critic = 1
-        for batch_idx, (data, target) in enumerate(self.train_data_loader):
+        for batch_idx, (rgb_data,sk_data, target) in enumerate(self.train_data_loader):
 
-            data = data.to(self.device)
-
+            rgb_data=rgb_data.to(self.device)
+            sk_data = sk_data.to(self.device)
             target = target.long().to(self.device)
 
-            output,loss_ctc = self.model(data,target)
+            output,loss_ctc = self.model(rgb_data,sk_data,target)
 
 
 
@@ -88,53 +88,6 @@ class Trainer_CSLR_method(BaseTrainer):
             self._progress(batch_idx, epoch, metrics=self.train_metrics, mode='train')
 
         self._progress(batch_idx, epoch, metrics=self.train_metrics, mode='train', print_summary=True)
-
-    def _train_epoch_with_context(self, epoch):
-        """
-        Training logic for an epoch
-        :param epoch: Integer, current training epoch.
-        :return: A log that contains average loss and metric in this epoch.
-        """
-
-        self.model.train()
-
-        real_label = 1
-        fake_label = 0
-        self.train_metrics.reset()
-        n_critic = 1
-        for batch_idx, (data, target) in enumerate(self.train_data_loader):
-
-            data = data.to(self.device)
-            if (len(target) > 1):
-                target, context = target
-
-            target = target.long().to(self.device)
-
-            output = self.model(data)
-
-            #### GENERATOR #######
-
-            loss_ctc = self.criterion(output, target).to(self.device)
-
-            (loss_ctc / n_critic).backward()
-            if (batch_idx % n_critic == 0):
-                self.optimizer.step()  # Now we can do an optimizer step
-                self.optimizer.zero_grad()  # Reset gradients tensors
-
-            temp_wer, s, C, S, I, D = word_error_rate_generic(output, target, self.id2w)
-
-            # self.logger.info(true_score,fake_score)
-            writer_step = (epoch - 1) * self.len_epoch + batch_idx
-            self.train_metrics.update_all_metrics(
-                {
-                    'ctc_loss': loss_ctc.item(), 'wer': 100.0 * temp_wer,
-                }, writer_step=writer_step)
-
-            self._progress(batch_idx, epoch, metrics=self.train_metrics, mode='train')
-
-        self._progress(batch_idx, epoch, metrics=self.train_metrics, mode='train', print_summary=True)
-
-        self.logger.info('self.hyperparam ', self.model_Discriminator.hyperparam.item())
 
     def _valid_epoch(self, epoch, mode, loader):
         """
@@ -147,12 +100,14 @@ class Trainer_CSLR_method(BaseTrainer):
         self.valid_metrics.reset()
 
         with torch.no_grad():
-            for batch_idx, (data, target) in enumerate(loader):
-                data = data.to(self.device)
+            for batch_idx, (rgb_data,sk_data, target) in enumerate(loader):
 
+                rgb_data = rgb_data.to(self.device)
+                sk_data = sk_data.to(self.device)
                 target = target.long().to(self.device)
 
-                output,loss_ctc = self.model(data,target)  # , lm_inputs)
+                output, loss_ctc = self.model(rgb_data, sk_data, target)
+
 
 
 

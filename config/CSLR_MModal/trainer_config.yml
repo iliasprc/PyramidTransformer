@@ -7,11 +7,11 @@ trainer_cslr:
   gpu: 0 # id of gpu
   save: True # save checkpoint
   load: True # load pretrained checkpoint
-  gradient_accumulation: 1 # gradient accumulation steps
+  gradient_accumulation: 2 # gradient accumulation steps
   pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_I3D/dataset_MULTI_ISLR/date_09_04_2021_15.38.29/_model_epoch.pth
   log_interval: 1000 # print statistics every log_interval
   model:
-    name: SkeletonTR # model name
+    name: RGBSK # model name
     optimizer: # optimizer configuration
       type: Adam # optimizer type
       lr: 1e-4 # learning rate
@@ -26,7 +26,7 @@ trainer_cslr:
     train:
       batch_size: 1 # batch size
       shuffle: True # shuffle samples after every epoch
-      num_workers: 4 # number of thread for dataloader1
+      num_workers: 1 # number of thread for dataloader1
     val:
       batch_size: 1
       shuffle: False
@@ -37,7 +37,7 @@ trainer_cslr:
       num_workers: 2
   dataset:
     input_data: /home/papastrat/Desktop/ilias/datasets/
-    name: GSL_SI_Skeleton # dataset name
+    name: GSL_SI_MModal # dataset name
     modality: RGB # type of modality
     classes: 311 # number of classes
     normalize: True # mean, std normalization

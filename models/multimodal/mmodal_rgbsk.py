@@ -24,7 +24,24 @@ class CSLRSkeletonTR(nn.Module):
         self.tc_kernel_size = 5
         self.tc_pool_size = 2
         self.padding = 1
+        channels = planes
 
+        self.pe = PositionalEncoding1D(channels, max_tokens=300)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=channels, dim_feedforward=2*channels, nhead=8, dropout=0.1)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
+        # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
+
+        #self.use_cls_token = True
+        self.window_size = 16
+        self.stride = 8
+
+        #if self.use_cls_token:
+        self.cls_token = nn.Parameter(torch.randn(1, channels))
+        # self.to_out = nn.Sequential(
+        #     nn.LayerNorm(channels),
+        #     nn.Linear(channels, N_classes)
+        # )
 
 
     def forward(self, x, y=None):
@@ -40,37 +57,20 @@ class CSLRSkeletonTR(nn.Module):
         # #print(x.shape)
         x = self.embed(x)
         b = x.shape[0]
+        cls_token = repeat(self.cls_token, 'n d -> b n d', b=b)
+        #print('SK CLS x ',cls_token.shape,x.shape)
+        x = torch.cat((cls_token, x), dim=1)
+        #print(x.shape)
         x = rearrange(x, 'b t c -> b c t')
         x = self.pe(rearrange(x, 'b c t -> b t c'))
-        ##print(x.shape)
-        # x = rearrange(x, 'b c t h w -> (t h w) b c')
+        #print('SK after position ',x.shape)
 
-        if self.use_cls_token:
-            cls_token = repeat(self.cls_token, 'n d -> b n d', b=b)
-            # print(cls_token.shape,x.shape)
-            x = torch.cat((cls_token, x), dim=1)
-            ##print(x.shape)
-            x = rearrange(x, 'b t d -> t b d')
+        x = rearrange(x, 'b t d -> t b d')
 
-            x = self.transformer_encoder(x)
-            # print(x.shape,x[0].shape)
-            cls_token = x[0]
+        x = self.transformer_encoder(x)
+        #print('SK features x x[0] ',x.shape,x[0].shape)
+        return x[0].unsqueeze(1)
 
-            y_hat = self.to_out(cls_token).unsqueeze(1)
-            # print('yaht',y_hat.shape)
-        else:
-            # #print(x.shape)
-            x = rearrange(x, 'b t d -> t b d')
-
-            x = self.transformer_encoder(x)
-            # x = self.transformer_encoder(rearrange(x, 't b d -> d b t'))
-            x = torch.mean(x, dim=0)
-            y_hat = self.classifier(x)
-
-        if y != None:
-            loss = self.loss(y_hat, y)
-            return y_hat, loss
-        return y_hat
 
 
 class InceptionI3d(nn.Module):
@@ -238,17 +238,15 @@ class InceptionI3d(nn.Module):
                              use_batch_norm=False,
                              use_bias=True,
                              name='logits')
+        self.pe = PositionalEncoding1D(1024, dropout=0.1, max_tokens=300)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=1024, dim_feedforward=2048, nhead=8, dropout=0.2)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1)
 
-        self.loss = CTC_Loss()
+
 
         self.build()
-        # self.rnn = nn.LSTM(
-        #     input_size=1024,
-        #     hidden_size=self.hidden_size,
-        #     num_layers=self.num_layers,
-        #     dropout=self.rnn_dropout,
-        #     bidirectional=True)
-        # self.freeze_param()
+
+        self.freeze_param()
 
     def replace_logits(self, num_classes):
         self._num_classes = num_classes
@@ -270,7 +268,7 @@ class InceptionI3d(nn.Module):
         x = x.unfold(2, self.window_size, self.stride).squeeze(0)
         # print(x.shape)
         x = rearrange(x, 'c n h w t -> n c t h w')
-        # print(x.shape)
+        #print('after window ',x.shape)
         # with torch.no_grad():
         for end_point in self.VALID_ENDPOINTS:
             if end_point in self.end_points:
@@ -283,9 +281,21 @@ class InceptionI3d(nn.Module):
         # print(x.size())
         final_time, dim, _, _, _ = x.size()
 
-        features = rearrange(x, 't dim d h w -> t (d h w) dim')
-        # print(features.size())
-        return features
+        x= rearrange(x, 'n c d h w -> n (d h w) c')
+
+
+        x = rearrange(x, 't b c -> b t c')
+        #print('RGB before pe ', x.shape)
+        x = self.pe(x)
+
+        x = rearrange(x, 'b t c -> t b c')
+
+        #print('RGB befor tr,',x.shape)
+        #
+
+        x = self.transformer_encoder(x)
+
+        return x
 
 
 
@@ -309,27 +319,27 @@ class InceptionI3d(nn.Module):
 
 
 
-class RGBSK_model(BaseModel):
+class RGBSK_model(nn.Module):
     def __init__(self, N_classes):
         super().__init__()
-        channels = 1025+512
+
         self.cnn = InceptionI3d(num_classes=N_classes, temporal_resolution=25, mode='continuous',
                                 in_channels=3)
-        self.sk = CSLRSkeletonTR(planes = channels,N_classes=N_classes)
-
+        self.sk = CSLRSkeletonTR(planes = 512,N_classes=N_classes)
+        channels = 1024 + 512
         self.pe = PositionalEncoding1D(channels, max_tokens=300)
         encoder_layer = nn.TransformerEncoderLayer(d_model=channels, dim_feedforward=2*channels, nhead=8, dropout=0.1)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
         # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
         # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
 
-        self.use_cls_token = True
+        #self.use_cls_token = True
         self.window_size = 16
         self.stride = 8
 
         #if self.use_cls_token:
-        self.cls_token = nn.Parameter(torch.randn(1, channels))
-        self.to_out = nn.Sequential(
+        #self.cls_token = nn.Parameter(torch.randn(1, channels))
+        self.classifier = nn.Sequential(
             nn.LayerNorm(channels),
             nn.Linear(channels, N_classes)
         )
@@ -340,24 +350,28 @@ class RGBSK_model(BaseModel):
         with torch.no_grad():
             rgb_feats = self.cnn(vid)
         sk_feats = self.sk(skeleton)
-        print(f"rgb {rgb_feats.shape} sk {sk_feats.shape}")
-        x = torch.cat((rgb_feats,sk_feats))
+        #print(f"rgb {rgb_feats.shape} sk {sk_feats.shape}")
+        x = torch.cat((rgb_feats,sk_feats),dim=-1)
+        #print('cocnat x ',x.shape)
         b = x.shape[0]
-        x = rearrange(x, 'b t c -> b c t')
-        x = self.pe(rearrange(x, 'b c t -> b t c'))
+        x = rearrange(x, 't b c -> b t c')
+        x = self.pe(x)
         ##print(x.shape)
         # x = rearrange(x, 'b c t h w -> (t h w) b c')
 
         #if self.use_cls_token:
-        cls_token = repeat(self.cls_token, 'n d -> b n d', b=b)
-        # print(cls_token.shape,x.shape)
-        x = torch.cat((cls_token, x), dim=1)
-        ##print(x.shape)
+        # cls_token = repeat(self.cls_token, 'n d -> b n d', b=b)
+        # # print(cls_token.shape,x.shape)
+        # x = torch.cat((cls_token, x), dim=1)
+        # ##print(x.shape)
         x = rearrange(x, 'b t d -> t b d')
 
         x = self.transformer_encoder(x)
         # print(x.shape,x[0].shape)
-        cls_token = x[0]
 
-        y_hat = self.to_out(cls_token).unsqueeze(1)
+
+        y_hat = self.classifier(x)
+        if y!=None:
+            loss = self.loss(y_hat, y)
+            return y_hat, loss
         return y_hat

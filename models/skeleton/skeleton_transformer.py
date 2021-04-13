@@ -177,25 +177,28 @@ class SkeletonTR(nn.Module):
 
 
 class CSLRSkeletonTR(nn.Module):
-    def __init__(self, planes = 512,N_classes = 226):
+    def __init__(self, planes = 256,N_classes = 226):
         super(CSLRSkeletonTR, self).__init__()
+        planes=512
         self.embed = nn.Linear(65*3,planes)
-        #self.embed = nn.Sequential(nn.Linear(65*3,planes),nn.Dropout(0.2),nn.LayerNorm(planes))
+        # self.embed = nn.Sequential(nn.Linear(65*3,planes),nn.LayerNorm(planes))
         self.temp_channels = planes
+        planes = 512
 
-        self.tc_kernel_size = 5
-        self.tc_pool_size = 2
-        self.padding = 1
+        # self.tc_kernel_size = 3
+        # self.tc_pool_size = 2
+        # self.padding = 1
         # self.temporal = torch.nn.Sequential(
-        #     nn.InstanceNorm1d(planes),
+        #
+        #     nn.Conv1d(65*3, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+        #     nn.ReLU(),
+        # #     nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
         #     nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
         #     nn.ReLU(),
-        #     nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
-        #     nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
-        #     nn.ReLU(),
+        #     nn.InstanceNorm1d(planes))
         #     nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size))
         self.pe = PositionalEncoding1D(planes,max_tokens=300)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.1)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=2*planes, nhead=8, dropout=0.1)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
        # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
        # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
@@ -217,14 +220,14 @@ class CSLRSkeletonTR(nn.Module):
 
         #print(x.shape)
         x1 = x.unfold(1, self.window_size, self.stride).squeeze(0)
+
+
         #print(x1.shape)
         x1 = rearrange(x1,'w k a t -> w t (k a)')
-        x= x1# rearrange(x,'b t k a -> b t (k a)')
-        #print(x1.shape)
-        #x = self.eca1(x)
-        #x = self.pool(x)  # self.relu(self.bn(self.conv(x))))
-        # #print(x.shape)
-        x = self.embed(x)
+        x = self.embed(x1)
+        #x=  rearrange(x1,'b t c -> b t c')
+
+        #
         b = x.shape[0]
         x = rearrange(x,'b t c -> b c t')
         x = self.pe(rearrange(x,'b c t -> b t c'))
@@ -251,7 +254,9 @@ class CSLRSkeletonTR(nn.Module):
 
             x = self.transformer_encoder(x)
             #x = self.transformer_encoder(rearrange(x, 't b d -> d b t'))
-            x = torch.mean(x, dim=0)
+            x = torch.mean(x, dim=0,keepdim=True)
+            print(x.shape)
+            print(b)
             y_hat = self.classifier(x)
 
         if y!=None:

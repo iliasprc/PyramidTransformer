@@ -62,7 +62,7 @@ class CSLRVideoResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
         self.pe = PositionalEncoding1D(2048,dropout=0.1,max_tokens=300)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=2048, dim_feedforward=2048, nhead=8, dropout=0.2)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=2048, dim_feedforward=4096, nhead=8, dropout=0.2)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1)
         # init weights
         self.loss = CTC_Loss()
