@@ -9,7 +9,7 @@ from models.multimodal.mutimodal_model import RGBD_Transformer
 from models.vmz.eca_ir_csn_152 import eca_ir_csn_152
 from models.vmz.ir_csn_152 import ir_csn_152
 from models.vmz.pyramid_transformer import ir_csn_152_transformer
-from models.skeleton.skeleton_transformer import SkeletonTR,CSLRSkeletonTR
+from models.skeleton.skeleton_transformer import SkeletonTR,CSLRSkeletonTR,SK_TCL
 from models.cslr.googlenet_tcl import GoogLeNet_TConvs
 from models.gcn.model.decouple_gcn_attn import STGCN,STGCN_Transformer
 
@@ -55,6 +55,8 @@ def CSLR_video_encoder(config, N_classes):
         return SLR_I3D()
     elif config.model.name == 'SkeletonTR':
         return CSLRSkeletonTR(N_classes = N_classes)
+    elif config.model.name == 'SK_TCL':
+        return SK_TCL(N_classes=N_classes)
     elif config.model.name == 'IR_CSN_152_Transformer':
         from models.cslr.cslr_pyramid_transformer import cslr_ir_csn_152_transformer
         return cslr_ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
@@ -90,7 +92,10 @@ def RGBD_model(config, N_classes):
     if config.model.name == 'RGBD_Transformer':
         m = RGBD_Transformer(config, N_classes)
         return m
-
+    elif config.model.name == 'RGB_SK_Transformer':
+        from models.multimodal.mutimodal_model import RGB_SK_Transformer
+        m = RGB_SK_Transformer(config,N_classes)
+        return m
 
 def showgradients(model):
     for name, param in model.named_parameters():

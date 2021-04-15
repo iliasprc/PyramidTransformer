@@ -75,7 +75,7 @@ class SkeletonTR(nn.Module):
             x= rearrange(x,'b t d -> t b d')
 
             x = self.transformer_encoder(x)
-            ##print(x.shape,x[0].shape)
+            print(x.shape,x[0].shape)
             cls_token = x
             if self.mode == 'isolated':
                 cls_token = x[0]
@@ -176,14 +176,63 @@ class SkeletonTR(nn.Module):
 #
 
 
+class SK_TCL(nn.Module):
+    def __init__(self,channels=128,N_classes=311):
+        super(SK_TCL, self).__init__()
+
+        self.tc_kernel_size = 5
+        self.tc_pool_size = 2
+        self.padding = 0
+        self.window_size = 16
+        self.stride = 8
+        planes = channels
+        self.embed = nn.Linear(33*3,planes)
+        self.tcl = torch.nn.Sequential(
+
+            nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+            nn.ReLU(),
+            nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
+            nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+            nn.ReLU(),
+            nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size)
+
+           )
+        self.pe = PositionalEncoding1D(planes,max_tokens=300)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=2*planes, nhead=8, dropout=0.1)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.fc = nn.Linear(planes,N_classes)
+        self.loss = CTC_Loss()
+
+    def forward(self,x,y=None):
+        x1 = x.unfold(1, self.window_size, self.stride).squeeze(0)
+
+
+        #print(x1.shape)
+        x1 = self.embed(rearrange(x1,'w k a t -> w t (k a)'))
+        #print(x1.shape)
+        x1 = rearrange(x1,'w t c -> w c t')
+        x = self.tcl(x1)
+
+
+        x = rearrange(x,'w c t -> t w c')
+        x = self.pe(x)
+        #print(x.shape)
+        x = rearrange(x,'b t c -> t b c')
+        x = self.transformer_encoder(x)
+        y_hat = self.fc(x)
+        if y != None:
+            loss = self.loss(y_hat, y)
+            return y_hat, loss
+        return y_hat
+
 class CSLRSkeletonTR(nn.Module):
     def __init__(self, planes = 256,N_classes = 226):
         super(CSLRSkeletonTR, self).__init__()
-        planes=512
-        self.embed = nn.Linear(65*3,planes)
+        planes=128
+        self.embed = nn.Linear(33*3,planes)
         # self.embed = nn.Sequential(nn.Linear(65*3,planes),nn.LayerNorm(planes))
         self.temp_channels = planes
-        planes = 512
+
 
         # self.tc_kernel_size = 3
         # self.tc_pool_size = 2

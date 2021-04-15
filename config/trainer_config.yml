@@ -37,7 +37,7 @@ trainer:
       num_workers: 2
   dataset:
     input_data: /home/papastrat/Desktop/ilias/datasets/
-    name: MULTI_ISLR # dataset name
+    name: AUTSL_RGB_SK # dataset name
     modality: RGB # type of modality
     classes: 311 # number of classes
     normalize: True # mean, std normalization

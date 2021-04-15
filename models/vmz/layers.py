@@ -12,6 +12,31 @@ model_urls = {
 }
 
 
+def expand_to_batch(tensor, desired_size):
+    tile = desired_size // tensor.shape[0]
+    return repeat(tensor, 'b ... -> (b tile) ...', tile=tile)
+
+
+class PositionalEncoding1D(nn.Module):
+
+    def __init__(self, dim, dropout=0.1, max_tokens=64):
+        super(PositionalEncoding1D, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(1, max_tokens, dim)
+        position = torch.arange(0, max_tokens, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, dim, 2).float() * (-torch.log(torch.Tensor([10000.0])) / dim))
+        pe[..., 0::2] = torch.sin(position * div_term)
+        pe[..., 1::2] = torch.cos(position * div_term)
+        # pe = pe.unsqueeze(0).transpose(0, 1)
+        self.pe = nn.Parameter(pe)#.cuda()
+        self.pe.requires_grad = True
+    def forward(self, x):
+        batch, seq_tokens, _ = x.size()
+        x = x + expand_to_batch(self.pe[:, :seq_tokens, :], desired_size=batch)
+        return self.dropout(x)
+
+
 class ECA_3D(nn.Module):
     """Constructs a channel attention module.
     Args:
@@ -329,17 +354,18 @@ class SpatialModulation(nn.Module):
         else:
             k1 -= 4
         self.eca1 = ECA_3D(k_size=k1)
-        # self.conv = nn.Conv3d(planes, planes//2, kernel_size=(1, 1, 1), stride=(1, 1, 1), padding=(0, 0, 0)
-        #                       ,dilation=(1 ,1,1), bias=False ,groups=planes//2)
-        #
-        # self.bn = nn.BatchNorm3d(planes//2)
-        # self.relu = nn.ReLU(inplace=True)
+        if planes== 1024:
+            max_tokens = 785
+        else:
+            max_tokens = 393
+
+        self.pe = PositionalEncoding1D(dim = planes,max_tokens=max_tokens)
         self.pool = nn.AdaptiveAvgPool3d((downsample_scale, 7, 7))
         encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.2)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
-        self.use_cls_token = False
+        self.use_cls_token = True
         if self.use_cls_token:
-            self.cls_token = nn.Parameter(torch.randn(1, planes // 2))
+            self.cls_token = nn.Parameter(torch.randn(1, planes ))
         #     self.to_out = nn.Sequential(
         #         nn.LayerNorm(planes//2),
         #         nn.Linear(planes//2, 226)
@@ -358,14 +384,14 @@ class SpatialModulation(nn.Module):
             cls_token = repeat(self.cls_token, 'n d -> n b d', b=b)
             # print(cls_token.shape,x.shape)
             x = torch.cat((cls_token, x), dim=0)
-            # print(x.shape)
-
+            #print(x.shape)
+            x = rearrange(self.pe(rearrange(x,'t b d -> b t d')),'b t d -> t b d')
             x = self.transformer_encoder(x)
             # print(x.shape,x[0].shape)
             cls_token = x[0]
             return cls_token  # self.to_out(cls_token)
         else:
-            # print(x.shape)
+            print(x.shape)
             x = self.transformer_encoder(x)
             x = torch.mean(x, dim=0)
             # x = self.classifier(x)

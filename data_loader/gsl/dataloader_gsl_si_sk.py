@@ -6,7 +6,7 @@ import torch
 from base.base_data_loader import Base_dataset
 from data_loader.gsl.utils import read_json_sequence
 from data_loader.loader_utils import multi_label_to_index, read_gsl_continuous,pad_skeleton,skeleton_augment,sampling_mode
-
+from data_loader.gsl.landmarks import pose_selected,hand_selected
 
 feats_path = 'gsl_cont_features/'
 train_prefix = "train"
@@ -65,7 +65,11 @@ class GSL_SI_Skeleton(Base_dataset):
         path = os.path.join(self.data_path, self.list_IDs[index])
         pose, lh, rh = read_json_sequence(path)
 
-
+        pose = pose[:,pose_selected,:]
+        lh = lh[:,hand_selected,:]
+        rh = rh[:,hand_selected,:]
+        # print(pose.shape
+        #       )
         y = multi_label_to_index(classes=self.classes, target_labels=self.list_glosses[index])
         # print(pose.shape, lh.shape, rh.shape)
         x = torch.from_numpy(np.concatenate((pose, lh, rh), axis=1)[:, :, :3]).float()
@@ -75,7 +79,7 @@ class GSL_SI_Skeleton(Base_dataset):
             if T>self.seq_length:
                 num_of_images = sampling_mode(True, num_of_images, self.seq_length)
                 x = x[num_of_images,:,:]
-            x = skeleton_augment(x)
+            #x = skeleton_augment(x)
         else:
             if T > self.seq_length:
                 num_of_images = sampling_mode(False, num_of_images, self.seq_length)
@@ -89,7 +93,7 @@ class GSL_SI_Skeleton(Base_dataset):
         # self.count+=1
         #print(self.mean/self.count,self.std/self.count)
         if x.shape[0] < 16:
-            x = pad_skeleton(x,16 - x.shape[0])
+            x = pad_skeleton(x,17 - x.shape[0])
 
         #     zeros = torch.from_numpy(np.zeros((16 - x.shape[0], 65, 3))).float()
         #     # print(x.shape)

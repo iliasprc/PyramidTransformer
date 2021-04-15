@@ -14,6 +14,58 @@ from models.skeleton.skeleton_transformer import PositionalEncoding1D
 from utils.ctc_loss import CTC_Loss
 
 
+
+
+class SK_TCL(nn.Module):
+    def __init__(self,channels=256,N_classes=311):
+        super(SK_TCL, self).__init__()
+
+        self.tc_kernel_size = 5
+        self.tc_pool_size = 2
+        self.padding = 0
+        self.window_size = 16
+        self.stride = 8
+        planes = channels
+        self.embed = nn.Linear(33*3,planes)
+        self.tcl = torch.nn.Sequential(
+
+            nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+            nn.ReLU(),
+            nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
+            nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+            nn.ReLU(),
+            nn.InstanceNorm1d(planes),
+            nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size))
+        self.pe = PositionalEncoding1D(planes,max_tokens=300)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=2*planes, nhead=8, dropout=0.1)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.fc = nn.Linear(planes,N_classes)
+        self.loss = CTC_Loss()
+
+    def forward(self,x,y=None):
+        x1 = x.unfold(1, self.window_size, self.stride).squeeze(0)
+
+
+
+        #print(x1.shape)
+        x1 = self.embed(rearrange(x1,'w k a t -> w t (k a)'))
+        #print(x1.shape)
+        x1 = rearrange(x1,'w t c -> w c t')
+        x = self.tcl(x1)
+
+
+        x = rearrange(x,'w c t -> t w c')
+        x = self.pe(x)
+        #print(x.shape)
+        x = rearrange(x,'b t c -> t b c')
+        x = self.transformer_encoder(x)
+        y_hat = self.fc(x)
+        if y != None:
+            loss = self.loss(y_hat, y)
+            return x, loss
+        return x,torch.tensor(0)
+
+
 class CSLRSkeletonTR(nn.Module):
     def __init__(self, planes=512, N_classes=226):
         super(CSLRSkeletonTR, self).__init__()
@@ -231,17 +283,18 @@ class InceptionI3d(nn.Module):
                                      stride=(1, 1, 1))
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.dropout = nn.Dropout(dropout_keep_prob)
-        self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
-                             kernel_shape=[1, 1, 1],
-                             padding=0,
-                             activation_fn=None,
-                             use_batch_norm=False,
-                             use_bias=True,
-                             name='logits')
+        # self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
+        #                      kernel_shape=[1, 1, 1],
+        #                      padding=0,
+        #                      activation_fn=None,
+        #                      use_batch_norm=False,
+        #                      use_bias=True,
+        #                      name='logits')
         self.pe = PositionalEncoding1D(1024, dropout=0.1, max_tokens=300)
         encoder_layer = nn.TransformerEncoderLayer(d_model=1024, dim_feedforward=2048, nhead=8, dropout=0.2)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1)
-
+        self.fc = nn.Linear(1024,num_classes)
+        self.loss= CTC_Loss()
 
 
         self.build()
@@ -262,7 +315,7 @@ class InceptionI3d(nn.Module):
         for k in self.end_points.keys():
             self.add_module(k, self.end_points[k])
 
-    def forward(self, x):
+    def forward(self, x,y=None):
 
 
         x = x.unfold(2, self.window_size, self.stride).squeeze(0)
@@ -294,8 +347,12 @@ class InceptionI3d(nn.Module):
         #
 
         x = self.transformer_encoder(x)
+        y_hat = self.fc(x)
 
-        return x
+        if y!=None:
+            loss = self.loss(y_hat, y)
+            return x, loss
+        return x,torch.tensor(0)
 
 
 
@@ -325,8 +382,8 @@ class RGBSK_model(nn.Module):
 
         self.cnn = InceptionI3d(num_classes=N_classes, temporal_resolution=25, mode='continuous',
                                 in_channels=3)
-        self.sk = CSLRSkeletonTR(planes = 512,N_classes=N_classes)
-        channels = 1024 + 512
+        self.sk = SK_TCL(N_classes=N_classes)
+        channels = 1024 + 256
         self.pe = PositionalEncoding1D(channels, max_tokens=300)
         encoder_layer = nn.TransformerEncoderLayer(d_model=channels, dim_feedforward=2*channels, nhead=8, dropout=0.1)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
@@ -348,8 +405,8 @@ class RGBSK_model(nn.Module):
     def forward(self, vid,skeleton,y=None):
 
         with torch.no_grad():
-            rgb_feats = self.cnn(vid)
-        sk_feats = self.sk(skeleton)
+            rgb_feats,loss_rgb = self.cnn(vid,y)
+        sk_feats,loss_sk = self.sk(skeleton,y)
         #print(f"rgb {rgb_feats.shape} sk {sk_feats.shape}")
         x = torch.cat((rgb_feats,sk_feats),dim=-1)
         #print('cocnat x ',x.shape)
@@ -373,5 +430,5 @@ class RGBSK_model(nn.Module):
         y_hat = self.classifier(x)
         if y!=None:
             loss = self.loss(y_hat, y)
-            return y_hat, loss
+            return y_hat, 0.5*loss+0.3*loss_rgb+0.2*loss_sk
         return y_hat

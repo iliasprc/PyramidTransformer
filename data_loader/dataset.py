@@ -11,6 +11,8 @@ from data_loader.gsl.dataloader_gsl_si_sk import GSL_SI_Skeleton
 from data_loader.multi_slr.dataloader_multi_SLR import Multi_SLR
 from data_loader.gsl_iso.dataloader_greek_isolated import GSL_ISO, read_gsl_isolated, read_classes_file
 from data_loader.wasl.wasl_dataset import WASLdataset
+
+from data_loader.autsl.autsl_loader_rgb_sk import AUTSL_RGB_SK
 def data_generators(config):
     """
 
@@ -157,7 +159,19 @@ def islr_datasets(config):
         test_set = AUTSLSkeleton(config, 'test', classes)
         test_generator = data.DataLoader(test_set, **test_params)
         return training_generator, validation_generator, test_generator, classes
+    elif config.dataset.name == 'AUTSL_RGB_SK':
 
+        train_prefix = "train"
+        validation_prefix = "val"
+        _, _, classes = read_autsl_csv(os.path.join(config.cwd, 'data_loader/autsl/train_labels.csv'))
+        training_set = AUTSL_RGB_SK(config, train_prefix, classes)
+        training_generator = data.DataLoader(training_set, **train_params)
+
+        validation_set = AUTSL_RGB_SK(config, validation_prefix, classes)
+        validation_generator = data.DataLoader(validation_set, **val_params)
+        test_set = AUTSL_RGB_SK(config, 'test', classes)
+        test_generator = data.DataLoader(test_set, **test_params)
+        return training_generator, validation_generator, test_generator, classes
 
     elif config.dataset.name == 'WASL':
         training_set = WASLdataset(config,'train')

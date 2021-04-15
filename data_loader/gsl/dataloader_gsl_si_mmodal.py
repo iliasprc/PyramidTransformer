@@ -12,7 +12,7 @@ from base.base_data_loader import Base_dataset
 from data_loader.loader_utils import multi_label_to_index, pad_video, video_transforms, VideoRandomResizedCrop, \
     sampling_mode, pad_skeleton, skeleton_augment
 from data_loader.gsl.utils import read_json_sequence
-
+from data_loader.gsl.landmarks import pose_selected,hand_selected
 feats_path = 'gsl_cont_features/'
 train_prefix = "train"
 val_prefix = "val"
@@ -166,6 +166,9 @@ class GSL_SI_MModal(Base_dataset):
         path = os.path.join(self.data_path,'GSL_tf_lite_keypoints', path)
         pose, lh, rh = read_json_sequence(path)
 
+        pose = pose[:,pose_selected,:]
+        lh = lh[:,hand_selected,:]
+        rh = rh[:,hand_selected,:]
         # print(pose.shape, lh.shape, rh.shape)
         x = torch.from_numpy(np.concatenate((pose, lh, rh), axis=1)[:, :, :3]).float()
         T = x.shape[0]
@@ -174,7 +177,7 @@ class GSL_SI_MModal(Base_dataset):
             #if T > self.seq_length:
                 #num_of_images = sampling_mode(True, num_of_images, self.seq_length)
             x = x[num_of_images, :, :]
-            x = skeleton_augment(x)
+            #x = skeleton_augment(x)
         else:
             # if T > self.seq_length:
             #     num_of_images = sampling_mode(False, num_of_images, self.seq_length)

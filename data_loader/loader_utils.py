@@ -244,12 +244,12 @@ def pad_video(x, padding_size=0, padding_type='images'):
 
 
 def skeleton_augment(x):
-    if random.uniform(0, 1) > 0.5:
-        # flip skeleton x and y only
-        x[...,0:2] = -x[...,0:2]
-    if random.uniform(0, 1) > 0.7:
-        new_pos = torch.rand(2)/20.0
-        x[...,0:2]+=new_pos
+    # if random.uniform(0, 1) > 0.5:
+    #     # flip skeleton x and y only
+    #     x[...,0:2] = -x[...,0:2]
+    # if random.uniform(0, 1) > 0.7:
+    #     new_pos = torch.rand(2)/200.0
+    #     x[...,0:2]+=new_pos
 
     return x
 
