@@ -4,13 +4,13 @@ trainer:
   epochs: 30 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
-  gpu: 1 # id of gpu
+  gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: False # load pretrained checkpoint
   gradient_accumulation: 8 # gradient accumulation steps
   rgb_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_IR_CSN_152/date_25_02_2021_09.24.20/best_model.pth
   depth_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/trained/dept_pyramid_transformer_VAL_90.52/date_27_02_2021_23.12.18/best_model.pth
-  log_interval: 1000 # print statistics every log_interval
+  log_interval: 10000 # print statistics every log_interval
   model:
     name: RGBDSK_Transformer # model name
     optimizer: # optimizer configuration
@@ -25,11 +25,11 @@ trainer:
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
-      batch_size: 4 # batch size
+      batch_size: 8 # batch size
       shuffle: True # shuffle samples after every epoch
       num_workers: 4 # number of thread for dataloader
     val:
-      batch_size: 4
+      batch_size: 8
       shuffle: False
       num_workers: 4
     test:
@@ -38,7 +38,7 @@ trainer:
       num_workers: 2
   dataset:
     input_data: /home/papastrat/Desktop/ilias/datasets # path of input data
-    name: AUTSL_RGB_SK # dataset name
+    name: AUTSL_RGBD_SK # dataset name
     modality: RGB,SK # type of modality
     images_path: challenge/ # data directory
     classes: 226 # number of classes

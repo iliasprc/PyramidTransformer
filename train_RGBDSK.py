@@ -20,11 +20,11 @@ from torch.utils.tensorboard import SummaryWriter
 from data_loader.dataset import RGBD_generators,islr_datasets
 from models.model_utils import RGBD_model
 from models.model_utils import select_optimizer, load_checkpoint
-from trainer.trainer_rgbd import TrainerRGBD
+from trainer.trainer_rgbdsk import TrainerRGBDSK
 from utils.logger import Logger
 from utils.util import arguments, getopts
 
-config_file = 'config/RGBD/trainer_RGBD_config.yml'
+config_file = 'config/RGBDSK/trainer_RGBD_config.yml'
 
 
 def main():
@@ -38,7 +38,7 @@ def main():
         if 'c' in myargs:
             config_file = myargs['c']
     else:
-        config_file = 'config/RGBD/trainer_RGBD_config.yml'
+        config_file = 'config/RGBDSK/trainer_RGBD_config.yml'
 
     config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
     if len(myargs) > 0:
@@ -101,7 +101,7 @@ def main():
     optimizer, scheduler = select_optimizer(model, config['model'])
     log.info(f"{model}")
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
-    trainer = TrainerRGBD(config, model=model, optimizer=optimizer,
+    trainer = TrainerRGBDSK(config, model=model, optimizer=optimizer,
                           data_loader=training_generator, writer=writer, logger=log,
                           valid_data_loader=val_generator, test_data_loader=test_generator,
                           lr_scheduler=scheduler,

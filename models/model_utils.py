@@ -96,7 +96,9 @@ def RGBD_model(config, N_classes):
         from models.multimodal.mutimodal_model import RGB_SK_Transformer
         m = RGB_SK_Transformer(config,N_classes)
         return m
-
+    elif config.model.name =='RGBDSK_Transformer':
+        from models.multimodal.mutimodal_model import RGBDSK_Transformer
+        return RGBDSK_Transformer(config,N_classes)
 def showgradients(model):
     for name, param in model.named_parameters():
         print(name, ' ', type(param.data), param.size())

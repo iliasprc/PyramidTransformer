@@ -10,7 +10,7 @@ from omegaconf import OmegaConf
 from base.base_model import BaseModel
 from models.vmz.layers import BasicStem_Pool, SpatialModulation, Conv3DDepthwise, ECA_3D,PositionalEncoding1D
 from models.vmz.resnet import Bottleneck
-
+from models.vmz.layers1d import Conv1DDepthwise,BasicStem_Pool1D,Bottleneck1D
 model_urls = {
     "r2plus1d_34_8_ig65m": "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch-9bae36ae.pth",
     # noqa: E501
@@ -38,11 +38,98 @@ model_urls = {
 }
 
 
+
+class ResNet1D(nn.Module):
+
+    def __init__(self, block, conv_makers, layers,
+                 stem, num_classes=400,
+                 zero_init_residual=False, late_fusion=True,use_tpn = True):
+        """Generic resnet video generator.
+
+        Args:
+            block (nn.Module): resnet building block
+            conv_makers (list(functions)): generator function for each layer
+            layers (List[int]): number of blocks per layer
+            stem (nn.Module, optional): Resnet stem, if None, defaults to conv-bn-relu. Defaults to None.
+            num_classes (int, optional): Dimension of the final FC layer. Defaults to 400.
+            zero_init_residual (bool, optional): Zero init bottleneck residual BN. Defaults to False.
+        """
+        super(ResNet1D, self).__init__()
+        self.inplanes = 64
+
+        self.stem = stem()
+
+        self.layer1 = self._make_layer1d(block, conv_makers[0], 64, layers[0], stride=1)
+
+        self.layer2 = self._make_layer1d(block, conv_makers[1], 128, layers[1], stride=2)
+
+        self.layer3 = self._make_layer1d(block, conv_makers[2], 256, layers[2], stride=2)
+
+        self.layer4 = self._make_layer1d(block, conv_makers[3], 512, layers[3], stride=2)
+    def forward(self,x):
+        #with torch.no_grad():
+        x = self.stem(x)
+
+        x = self.layer1(x)
+
+        x = self.layer2(x)
+
+        x = self.layer4(self.layer3(x))
+        return x
+    def _make_layer1d(self, block, conv_builder, planes, blocks, stride=1):
+        downsample = None
+
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            ds_stride = stride#conv_builder.get_downsample_stride(stride)
+            downsample = nn.Sequential(
+                nn.Conv1d(self.inplanes, planes * block.expansion,
+                          kernel_size=1, stride=ds_stride, bias=False),
+                nn.BatchNorm1d(planes * block.expansion)
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, conv_builder, stride, downsample))
+
+        self.inplanes = planes * block.expansion
+        for i in range(1, blocks):
+            layers.append(block(self.inplanes, planes, conv_builder))
+
+        return nn.Sequential(*layers)
+
+
+
+def ir_csn_152_1d( num_classes=226,
+                           **kwargs):
+
+    use_pool1 = True
+    model = ResNet1D(block=Bottleneck1D, conv_makers=[Conv1DDepthwise] * 4, layers=[3, 8, 36, 3],
+                              stem=BasicStem_Pool1D, num_classes=num_classes, **kwargs)
+
+    # We need exact Caffe2 momentum for BatchNorm scaling
+    for m in model.modules():
+        if isinstance(m, nn.BatchNorm3d):
+            m.eps = 1e-3
+            m.momentum = 0.9
+
+
+    #model.fc = nn.Linear(3072, 226)
+
+    return model
+
+
+# m = ir_csn_152_1d()
+# print(m)
+# inp = torch.randn(4,27*3,32)
+# from torchsummary import summary
+# summary(m,(27*3,32),device='cpu')
+# o = m(inp)
+# print(o.shape)
+
 class TransformerResNet(nn.Module):
 
     def __init__(self, block, conv_makers, layers,
                  stem, num_classes=400,
-                 zero_init_residual=False, late_fusion=True):
+                 zero_init_residual=False, late_fusion=True,use_tpn = True):
         """Generic resnet video generator.
 
         Args:
@@ -67,11 +154,14 @@ class TransformerResNet(nn.Module):
         self.layer4 = self._make_layer(block, conv_makers[3], 512, layers[3], stride=2)
 
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        self.use_tr = use_tpn
+        if self.use_tr:
+            self.tpn3 = SpatialModulation(256 * block.expansion, downsample_scale=16, k=3, s=1, d=2)
 
-        self.tpn3 = SpatialModulation(256 * block.expansion, downsample_scale=16, k=3, s=1, d=2)
-
-        self.tpn4 = SpatialModulation(512 * block.expansion, downsample_scale=8, k=1, s=1, d=1)
-        #
+            self.tpn4 = SpatialModulation(512 * block.expansion, downsample_scale=8, k=1, s=1, d=1)
+            #
+        else:
+            self.avgpool = nn.AvgPool3d((1,7,7))
         # self.eca = ECA_3D(k_size=9)
 
         # init weights
@@ -91,15 +181,18 @@ class TransformerResNet(nn.Module):
             x = self.layer2(x)
 
         x = self.layer3(x)
-        tpn3 = self.tpn3(x)  # + tpn2
+        if self.use_tr:
+            tpn3 = self.tpn3(x)  # + tpn2
 
-        x = self.layer4(x)
-        tpn4 = self.tpn4(x)  # + tpn3
+            x = self.layer4(x)
+            tpn4 = self.tpn4(x)  # + tpn3
 
-        x_new = torch.cat((tpn3, tpn4), dim=-1)
-        # x_new = self.eca(x_new.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).squeeze(-1).squeeze(-1).squeeze(-1)
+            x_new = torch.cat((tpn3, tpn4), dim=-1)
+            # x_new = self.eca(x_new.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).squeeze(-1).squeeze(-1).squeeze(-1)
 
-        return x_new
+            return x_new
+        else:
+            return self.avgpool(self.layer4(x)).squeeze(-1).squeeze(-1)
 
     def training_step(self, train_batch):
         x, y = train_batch
@@ -274,6 +367,10 @@ class RGBD_Transformer(BaseModel):
                                                     progress=False,
                                                     num_classes=N_classes)
 
+        # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
+        # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
+
+        self.use_cls_token = True
         self.classifier = nn.Linear(6144, N_classes)
         self.device0 = torch.device('cuda:0')
         self.device1 = torch.device('cuda:1')
@@ -318,6 +415,136 @@ class RGBD_Transformer(BaseModel):
         loss = F.cross_entropy(logits, y.squeeze(-1).to(self.device0))
         return logits, loss, y
 
+
+
+class SK_TCL(nn.Module):
+    def __init__(self,channels=128,N_classes=311):
+        super(SK_TCL, self).__init__()
+
+        self.tc_kernel_size = 2
+        self.tc_pool_size = 2
+        self.padding = 0
+        self.window_size = 16
+        self.stride = 8
+        planes = channels
+        self.embed = nn.Linear(33*3,planes)
+        self.tcl = torch.nn.Sequential(
+
+            nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+            nn.ReLU(),
+            nn.BatchNorm1d(planes),
+            nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
+            nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+            nn.ReLU(),
+            nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size)
+
+           )
+
+
+    def forward(self,x,y=None):
+        x1 = x.unfold(1, self.window_size, self.stride).squeeze(0)
+
+
+        #print(x1.shape)
+        x1 = self.embed(rearrange(x1,'w k a t -> w t (k a)'))
+        #print(x1.shape)
+        x1 = rearrange(x1,'w t c -> w c t')
+        x = self.tcl(x1)
+
+
+        x = rearrange(x,'w c t -> t w c')
+        x = self.pe(x)
+        #print(x.shape)
+        x = rearrange(x,'b t c -> t b c')
+        x = self.transformer_encoder(x)
+        y_hat = self.fc(x)
+        if y != None:
+            loss = self.loss(y_hat, y)
+            return y_hat, loss
+        return y_hat
+
+class RGBDSK_Transformer(BaseModel):
+    def __init__(self, config, N_classes):
+        """
+
+        Args:
+            args (): argparse arguments
+            N_classes (int): number of classes
+        """
+        super().__init__()
+        config = OmegaConf.load(os.path.join(config.cwd, 'models/multimodal/model.yml'))['model']
+        self.rgb_encoder = ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
+                                                  num_classes=N_classes,use_tpn = False)
+        self.depth_encoder = ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True,
+                                                    progress=False,
+                                                    num_classes=N_classes,use_tpn = False)
+        self.sk_encoder = ir_csn_152_1d(num_classes=N_classes)
+        self.rgb_encoder.use_tr = False
+        self.depth_encoder.use_tr = False
+
+        self.reduce = nn.Conv1d(2048*2+1024,2048,kernel_size=1,bias=False)
+        planes = 2048
+        self.cls_token = nn.Parameter(torch.randn(1, planes))
+        self.pe = PositionalEncoding1D(planes, max_tokens=4+1)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.1)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+
+        self.classifier = nn.Linear(planes, N_classes)
+        self.device0 = torch.device('cuda:0')
+        self.device1 = torch.device('cuda:1')
+
+    def forward(self, train_batch, return_loss=True):
+        rgb_tensor, depth_tensor,sk, y = train_batch
+        #print(sk.shape)
+        sk = rearrange(sk,'b t j d -> b (j d) t')
+        features_sk = self.sk_encoder(sk)
+
+        features_rgb = self.rgb_encoder(rgb_tensor)
+
+        features_depth = self.depth_encoder(depth_tensor)
+        #print(features_rgb.shape,features_depth.shape,features_sk.shape)
+        concatenated = self.reduce(torch.cat((features_rgb, features_depth,features_sk), dim=1))
+        b = concatenated.shape[0]
+        x = rearrange(concatenated,'b c t -> b t c')
+        cls_token = repeat(self.cls_token, 'n c -> b n c', b=b)
+        ##print(cls_token.shape,x.shape)
+        x = torch.cat((cls_token, x), dim=1)
+        #print(x.shape)
+        x = self.pe(x)
+        x = rearrange(x, 'b t d -> t b d')
+        #concatenated = self.eca(concatenated.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).squeeze(-1).squeeze(-1).squeeze(
+       #     -1)
+        logits = self.classifier(x[0])
+        if return_loss:
+            loss = F.cross_entropy(logits, y.squeeze(-1))  # .mean()
+
+            return logits, loss, y
+        return logits, y
+
+    def training_step(self, train_batch, batch_idx=None):
+        rgb_tensor, depth_tensor, y = train_batch
+
+        features_rgb = self.rgb_encoder(rgb_tensor.to(self.device0))
+
+        features_depth = self.depth_encoder(depth_tensor.to(self.device1))
+
+        concatenated = torch.cat((features_rgb, features_depth.to(self.device0)), dim=1).to(self.device0)
+
+        logits = self.classifier(concatenated)
+        loss = F.cross_entropy(logits, y.squeeze(-1).to(self.device0))
+        return logits, loss, y
+
+    def validation_step(self, train_batch, batch_idx=None):
+        rgb_tensor, depth_tensor, y = train_batch
+        # (len(train_batch))
+        features_rgb = self.rgb_encoder(rgb_tensor.to(self.device0))
+        features_depth = self.depth_encoder(depth_tensor.to(self.device1))
+        # y = y.to(self.device0)
+        concatenated = torch.cat((features_rgb, features_depth.to(self.device0)), dim=1).to(self.device0)
+
+        logits = self.classifier(concatenated)
+        loss = F.cross_entropy(logits, y.squeeze(-1).to(self.device0))
+        return logits, loss, y
 
 class RGB_SK_Transformer(BaseModel):
     def __init__(self, config, N_classes):

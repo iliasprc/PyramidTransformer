@@ -1,18 +1,17 @@
-trainer:
+tester:
   cwd: /home/papastrat/PycharmProjects/PyramidTransformer # working directory
   logger: SLR_challenge # logger name
   epochs: 30 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
-  gpu: 1 # id of gpu
+  gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: False # load pretrained checkpoint
-  gradient_accumulation: 8 # gradient accumulation steps
-  rgb_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_IR_CSN_152/date_25_02_2021_09.24.20/best_model.pth
-  depth_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/trained/dept_pyramid_transformer_VAL_90.52/date_27_02_2021_23.12.18/best_model.pth
+  gradient_accumulation: 16 # gradient accumulation steps
+  pretrained_cpkt: /home/iliask/PycharmProjects/SLVTP/checkpoints/trained_cpkts/RGBD_best_93.28/best_model_epoch_2.pth
   log_interval: 1000 # print statistics every log_interval
   model:
-    name: RGBDSK_Transformer # model name
+    name: RGBD_Transformer # model name
     optimizer: # optimizer configuration
       type: SGD # optimizer type
       lr: 1e-2 # learning rate
@@ -37,20 +36,19 @@ trainer:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets # path of input data
-    name: AUTSL_RGB_SK # dataset name
-    modality: RGB,SK # type of modality
-    images_path: challenge/ # data directory
+    input_data: data/
+    name: AUTSL # dataset name
+    modality: RGB,Depth # type of modality
     classes: 226 # number of classes
     normalize: True # mean, std normalization
     padding : True # pad videos
     dim: [224,224] # frame dimension
     train:
-      seq_length: 32 # number of frames for each video
+      seq_length: 64 # number of frames for each video
       augmentation: True # do augmentation to video
     val:
-      seq_length: 32
+      seq_length: 64
       augmentation: False
     test:
-      seq_length: 32
+      seq_length: 64
       augmentation: False

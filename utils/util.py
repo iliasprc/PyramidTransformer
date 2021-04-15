@@ -31,7 +31,7 @@ def arguments():
     parser.add_argument('-c', type=str, default='config', metavar='config',
                         help='config file path')
     parser.add_argument('--modality', type=str, default='RGB', choices=['RGB', 'Depth', 'RGBD'],help='modality yo use for experiments')
-    parser.add_argument('--model', type=str, default='Pyramid_Transformer', choices=['IR_CSN_152', 'Pyramid_Transformer'])
+    parser.add_argument('--model', type=str, default='Pyramid_Transformer', choices=['IR_CSN_152', 'Pyramid_Transformer','RGBDSK_Transformer'])
     parser.add_argument('--gpu', type=str, default='0,1')
     parser.add_argument('--load', type=bool, default=False,help='load pretrained checkpoint')
     parser.add_argument('--pretrained_cpkt', type=str,
@@ -48,7 +48,7 @@ def cslr_arguments():
     parser.add_argument('-c', type=str, default='config', metavar='config',
                         help='config file path')
     parser.add_argument('--modality', type=str, default='RGB', choices=['RGB', 'Depth', 'RGBD'],help='modality yo use for experiments')
-    parser.add_argument('--model', type=str, default='IR_CSN_152', choices=['IR_CSN_152', 'Pyramid_Transformer'])
+    parser.add_argument('--model', type=str, default='IR_CSN_152')
     parser.add_argument('--gpu', type=str, default='0,1')
     parser.add_argument('--load', type=bool, default=False,help='load pretrained checkpoint')
     parser.add_argument('--pretrained_cpkt', type=str,
