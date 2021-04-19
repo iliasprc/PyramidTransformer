@@ -109,8 +109,8 @@ def main():
 
     if (config.load):
         model.fc = torch.nn.Linear(1024, 2042)
-
-        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
+        model.cnn.replace_logits(311)
+        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
 
         model.fc = torch.nn.Linear(1024, 311)
 

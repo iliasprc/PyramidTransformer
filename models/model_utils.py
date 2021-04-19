@@ -52,7 +52,7 @@ def CSLR_video_encoder(config, N_classes):
     elif config.model.name =='GoogLeNet_TConvs':
         return GoogLeNet_TConvs(N_classes=N_classes,mode='continuous')
     elif config.model.name == 'CSLR_I3D':
-        return SLR_I3D()
+        return SLR_I3D(num_classes=N_classes)
     elif config.model.name == 'SkeletonTR':
         return CSLRSkeletonTR(N_classes = N_classes)
     elif config.model.name == 'SK_TCL':

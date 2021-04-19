@@ -88,14 +88,16 @@ def main():
             config.rgb_cpkt,
             model.rgb_encoder, strict=False, load_seperate_layers=False)
         log.info(f'LOAD DEPTH CPKT')
+
+        pth_file, _ = load_checkpoint(
+             config.depth_cpkt,
+             model.depth_encoder, strict=False, load_seperate_layers=False)
+
+
     if torch.cuda.device_count() > 1:
         log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
 
         model = torch.nn.DataParallel(model)
-
-        # pth_file, _ = load_checkpoint(
-        #     config.depth_cpkt,
-        #     model.depth_encoder, strict=False, load_seperate_layers=False)
 
     model.to(device)
     optimizer, scheduler = select_optimizer(model, config['model'])

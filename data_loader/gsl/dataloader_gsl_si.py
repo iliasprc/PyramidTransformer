@@ -58,7 +58,7 @@ class GSL_SI(Base_dataset):
 
 
         if (self.modality == 'RGB'):
-            self.data_path = os.path.join(self.config.dataset.input_data, 'GSL_continuous')
+            self.data_path = os.path.join(self.config.dataset.input_data, 'GSL_NEW')
             self.get = self.video_loader
         elif (self.modality == 'features'):
             self.data_path = os.path.join(self.config.dataset.input_data, '')
@@ -96,6 +96,7 @@ class GSL_SI(Base_dataset):
         images = sorted(glob.glob(os.path.join(self.data_path, path, ) + '/*' + img_type))
 
         h_flip = False
+#        print(os.path.join(self.data_path, path))
         img_sequence = []
         # print(images)
         if (len(images) < 1):
@@ -123,7 +124,7 @@ class GSL_SI(Base_dataset):
         hue = random.uniform(0, 1) / 10.0
         r_resize = ((256, 256))
         crop_or_bbox = random.uniform(0, 1) > 0.5
-        to_flip = random.uniform(0, 1) > 1
+        to_flip = random.uniform(0, 1) > 0.5
         grayscale = random.uniform(0, 1) > 0.9
         t1 = VideoRandomResizedCrop(self.dim[0], scale=(0.9, 1.0), ratio=(0.8, 1.2))
         for img_path in images:
@@ -152,7 +153,7 @@ class GSL_SI(Base_dataset):
 
                                               resized_crop=t1,
                                               augmentation=True,
-                                              normalize=self.normalize, to_flip=to_flip,
+                                              normalize=self.normalize, to_flip=to_flip,grayscale=grayscale
                                               )
                 img_sequence.append(img_tensor)
             else:

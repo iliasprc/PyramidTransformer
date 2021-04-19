@@ -6,11 +6,11 @@ trainer:
   cuda: True # use nvidia gpu
   gpu: 0,1 # id of gpu
   save: True # save checkpoint
-  load: False # load pretrained checkpoint
+  load: True # load pretrained checkpoint
   gradient_accumulation: 8 # gradient accumulation steps
-  rgb_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_IR_CSN_152/date_25_02_2021_09.24.20/best_model.pth
-  depth_cpkt: /home/papastrat/PycharmProjects/PyramidTransformer/checkpoints/trained/dept_pyramid_transformer_VAL_90.52/date_27_02_2021_23.12.18/best_model.pth
-  log_interval: 10000 # print statistics every log_interval
+  rgb_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_IR_CSN_152/dataset_AUTSL/date_04_03_2021_10.03.02/best_model_epoch_19.pth
+  depth_cpkt: /home/papastrat/PycharmProjects/SLR_challenge-master/checkpoints/model_IR_CSN_152/dataset_Autsl/date_28_02_2021_11.15.59/best_model.pth
+  log_interval: 1000 # print statistics every log_interval
   model:
     name: RGBDSK_Transformer # model name
     optimizer: # optimizer configuration

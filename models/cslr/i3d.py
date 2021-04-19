@@ -461,7 +461,7 @@ class SLR_I3D(nn.Module):
         # self.cnn.load_state_dict(
         #     cpkt['model_dict'])
         self.cnn.replace_logits(self.n_classes)
-        self.use_transformer = True
+        self.use_transformer = False
         if not self.use_transformer:
             self.rnn = nn.LSTM(
                 input_size=1024,
@@ -496,9 +496,9 @@ class SLR_I3D(nn.Module):
             r_out, (h_n, h_c) = self.rnn(x)
             # r_out = x
 
-            x = self.cnn.logits(r_out.permute(1, 2, 0).unsqueeze(-1).unsqueeze(-1))
+            x = self.fc(x)
             # print('logits ',x.size())
-            y_hat = x.squeeze(-1).squeeze(-1).permute(2, 0, 1)
+            y_hat = x #.squeeze(-1).squeeze(-1).permute(2, 0, 1)
             if y != None:
                 loss_ctc = self.loss(y_hat, y)
                 return y_hat, loss_ctc
