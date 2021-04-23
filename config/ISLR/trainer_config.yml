@@ -6,12 +6,12 @@ trainer:
   cuda: True # use nvidia gpu
   gpu: 0,1 # id of gpu
   save: True # save checkpoint
-  load: True # load pretrained checkpoint
+  load: False # load pretrained checkpoint
   gradient_accumulation: 2 # gradient accumulation steps
   pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained/FINAL_nslt_2000_iters=5104_top1=32.48_top5=57.31_top10=66.31.pt
-  log_interval: 8000 # print statistics every log_interval
+  log_interval: 1000 # print statistics every log_interval
   model:
-    name: I3D # model name SkeletonTR
+    name: ir_csn_152_1d # model name SkeletonTR
     optimizer: # optimizer configuration
       type: SGD # optimizer type
       lr: 1e-2 # learning rate
@@ -24,11 +24,11 @@ trainer:
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
-      batch_size: 16 # batch size
+      batch_size: 64 # batch size
       shuffle: True # shuffle samples after every epoch
       num_workers: 6 # number of thread for dataloader1
     val:
-      batch_size: 16
+      batch_size: 64
       shuffle: False
       num_workers: 4
     test:
@@ -37,17 +37,17 @@ trainer:
       num_workers: 2
   dataset:
     input_data: /home/papastrat/Desktop/ilias/datasets
-    name: MULTI_ISLR # dataset name
+    name: AUTSL_SK # dataset name
     modality: RGB # type of modality
     classes: 226 # number of classes
     normalize: True # mean, std normalization
     padding : True # pad videos
     dim: [224,224] # frame dimension
     train:
-      seq_length: 16 # number of frames for each video
+      seq_length: 32 # number of frames for each video
       augmentation: True # do augmentation to video
     val:
-      seq_length: 16
+      seq_length: 32
       augmentation: False
     test:
       seq_length: 32

@@ -496,9 +496,12 @@ class SLR_I3D(nn.Module):
             r_out, (h_n, h_c) = self.rnn(x)
             # r_out = x
 
-            x = self.fc(x)
+            x = self.cnn.logits(r_out.permute(1, 2, 0).unsqueeze(-1).unsqueeze(-1))
             # print('logits ',x.size())
-            y_hat = x #.squeeze(-1).squeeze(-1).permute(2, 0, 1)
+            y_hat = x.squeeze(-1).squeeze(-1).permute(2, 0, 1)
+            #x = self.fc(x)
+            # print('logits ',x.size())
+            #y_hat = x #.squeeze(-1).squeeze(-1).permute(2, 0, 1)
             if y != None:
                 loss_ctc = self.loss(y_hat, y)
                 return y_hat, loss_ctc

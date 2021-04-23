@@ -109,9 +109,9 @@ def main():
 
     if (config.load):
         model.fc = torch.nn.Linear(1024, 2042)
-
-        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
-
+        model.cnn.replace_logits(2042)
+        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model.cnn, strict=True, load_seperate_layers=False)
+        model.cnn.replace_logits(311)
         model.fc = torch.nn.Linear(1024, 311)
 
     else:
@@ -125,8 +125,9 @@ def main():
 
     optimizer, scheduler = select_optimizer(model, config['model'], None)
 
-    log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     log.info(f"{model}")
+    log.info(f"Checkpoint Folder {cpkt_fol_name} ")
+
     trainer = Trainer_CSLR_method(config=config, model=model, optimizer=optimizer,
                                   data_loader=training_generator, writer=writer, id2w=id2w,
                                   valid_data_loader=val_generator, test_data_loader=test_generator,

@@ -17,6 +17,64 @@ def expand_to_batch(tensor, desired_size):
     return repeat(tensor, 'b ... -> (b tile) ...', tile=tile)
 
 
+
+class SpatialModulation1D(nn.Module):
+    def __init__(self,
+                 planes,
+                 downsample_scale=8,
+                 k=1,
+                 s=1,
+                 d=1
+                 ):
+        super(SpatialModulation1D, self).__init__()
+        k1 = int(np.log2(planes))
+        if k1 % 2 == 0:
+            k1 -= 5
+        else:
+            k1 -= 4
+        #self.eca1 = ECA_3D(k_size=k1)
+
+
+
+        self.pool = nn.AdaptiveAvgPool1d((downsample_scale))
+        encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.2)
+        self.pe = PositionalEncoding1D(dim=planes, max_tokens=downsample_scale)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.use_cls_token = True
+        if self.use_cls_token:
+            self.cls_token = nn.Parameter(torch.randn(1, planes ))
+        #     self.to_out = nn.Sequential(
+        #         nn.LayerNorm(planes//2),
+        #         nn.Linear(planes//2, 226)
+        #     )
+        # else:
+        #     self.classifier = nn.Linear(planes//2,226)
+
+    def forward(self, x):
+        b = x.shape[0]
+        #x = self.eca1(x)
+        x = self.pool(x)  # self.relu(self.bn(self.conv(x))))
+        # print(x.shape)
+        x = rearrange(x, 'b c t -> t b c')
+
+        if self.use_cls_token:
+            cls_token = repeat(self.cls_token, 'n d -> n b d', b=b)
+            # print(cls_token.shape,x.shape)
+            x = torch.cat((cls_token, x), dim=0)
+            #print(x.shape)
+            x = rearrange(self.pe(rearrange(x,'t b d -> b t d')),'b t d -> t b d')
+            x = self.transformer_encoder(x)
+            # print(x.shape,x[0].shape)
+            cls_token = x[0]
+            return cls_token  # self.to_out(cls_token)
+        else:
+            print(x.shape)
+            x = self.transformer_encoder(x)
+            x = torch.mean(x, dim=0)
+            # x = self.classifier(x)
+
+            return x
+
 class PositionalEncoding1D(nn.Module):
 
     def __init__(self, dim, dropout=0.1, max_tokens=64):
@@ -345,7 +403,7 @@ class TemporalModulation(nn.Module):
         return x
 
 
-class SpatialModulation(nn.Module):
+class SpatialModulation3D(nn.Module):
     def __init__(self,
                  planes,
                  downsample_scale=8,
@@ -353,7 +411,7 @@ class SpatialModulation(nn.Module):
                  s=1,
                  d=1
                  ):
-        super(SpatialModulation, self).__init__()
+        super(SpatialModulation3D, self).__init__()
         k1 = int(np.log2(planes))
         if k1 % 2 == 0:
             k1 -= 5

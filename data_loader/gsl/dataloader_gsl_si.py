@@ -12,6 +12,34 @@ from PIL import Image
 from base.base_data_loader import Base_dataset
 from data_loader.loader_utils import multi_label_to_index, pad_video, video_transforms, sampling, VideoRandomResizedCrop,read_gsl_continuous,read_gsl_continuous_classes
 
+def read_bounding_box(path):
+    bbox = {}
+    data = open(path, 'r').read().splitlines()
+    for item in data:
+        # p#rint(item)
+        if (len(item.split('|')) < 2):
+            print(item.split('|'))
+            print("\n {} {} {} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n".format(item, path, path))
+        path, coordinates = item.split('|')
+        scenario = path.split('_')[0]
+        #print(scenario)
+        path = f'{scenario}/{path}'
+        coords = coordinates.split(',')
+        # print(coords)
+        x1, x2, y1, y2 = int(coords[0].split(':')[-1]), int(coords[1].split(':')[-1]), int(
+            coords[2].split(':')[-1]), int(coords[3].split(':')[-1])
+        # print(x1,x2,y1,y2)
+        ks = {'x1': x1, 'x2': x2, 'y1': y1, 'y2': y2}
+
+        bbox[path] = ks
+        # bbox[path]['x2'] = x2
+        # bbox[path]['y1'] = y1
+        # bbox[path]['y2'] = y2
+
+        # print(a)
+
+    # bbox.append(a)
+    return bbox
 
 feats_path = 'gsl_cont_features/'
 train_prefix = "train"
@@ -45,6 +73,7 @@ class GSL_SI(Base_dataset):
         self.padding = self.config.dataset.padding
         self.augmentation = self.config.dataset[self.mode]['augmentation']
         self.return_context = False
+        self.bbox = read_bounding_box(os.path.join(config.cwd,'data_loader/gsl/files/bbox_for_gsl_continuous.txt'))
         if self.mode == train_prefix:
             self.list_IDs, self.list_glosses = read_gsl_continuous(os.path.join(config.cwd, train_filepath))
 
@@ -102,10 +131,12 @@ class GSL_SI(Base_dataset):
         if (len(images) < 1):
             print(os.path.join(self.data_path, path))
 
-
+        bbox = self.bbox.get(path)
+        #print(bbox)
+        #print(path)
         if (self.augmentation):
             ## training set temporal  AUGMENTATION
-            temporal_augmentation = int((np.random.randint(80, 100) / 100.0) * len(images))
+            temporal_augmentation = int((np.random.randint(65, 100) / 100.0) * len(images))
             if (temporal_augmentation > 15):
                 images = sorted(random.sample(images, k=temporal_augmentation))
             if (len(images) > self.seq_length):
@@ -139,8 +170,11 @@ class GSL_SI(Base_dataset):
             frame1 = np.array(frame_o)
             #print(frame1.shape)
 
-
-            frame1 = frame1[:, crop_size:648 - crop_size]
+            if bbox != None:
+                #print('dfasdfdsf')
+                frame1 = frame1[:, bbox['x1']:bbox['x2']]
+            else:
+                frame1 = frame1[:, crop_size:648 - crop_size]
             frame = Image.fromarray(frame1)
 
             if self.augmentation:

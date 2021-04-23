@@ -8,6 +8,8 @@ from data_loader.autsl.rgbd_loader import AUTSL_RGBD
 from data_loader.autsl.rgbdsk_loader import AUTSL_RGBD_SK
 from data_loader.loader_utils import read_autsl_csv
 from data_loader.gsl.dataloader_gsl_si import GSL_SI,read_gsl_continuous_classes
+from data_loader.gsl.dataloader_gsl_w import GSLW
+
 from data_loader.gsl.dataloader_gsl_si_sk import GSL_SI_Skeleton
 from data_loader.multi_slr.dataloader_multi_SLR import Multi_SLR
 from data_loader.gsl_iso.dataloader_greek_isolated import GSL_ISO, read_gsl_isolated, read_classes_file
@@ -222,6 +224,24 @@ def cslr_datasets(config):
         validation_generator = data.DataLoader(validation_set, **val_params)
         test_set = GSL_SI(config=config,  mode=test_prefix, classes=classes)
         test_generator = data.DataLoader(test_set, **test_params)
+        return training_generator, validation_generator, test_generator, classes,id2w
+   
+    elif config.dataset.name == 'GSLW':
+        train_prefix = "train"
+        val_prefix = "val"
+        test_prefix = "test"
+
+        indices, classes, id2w = read_gsl_continuous_classes(
+            os.path.join(config.cwd, 'data_loader/gsl/files/continuous_classes.csv'))
+        w2id = {v: k for k, v in id2w.items()}
+
+        training_set = GSLW(config=config,  mode=train_prefix, classes=classes)
+        training_generator = data.DataLoader(training_set, **train_params)
+        validation_set = GSLW(config=config,  mode=val_prefix, classes=classes)
+        validation_generator = data.DataLoader(validation_set, **val_params)
+        #test_set = GSL_SI(config=config,  mode=test_prefix, classes=classes)
+        test_generator =None # data.DataLoader(test_set, **test_params)
+    
         return training_generator, validation_generator, test_generator, classes,id2w
     elif config.dataset.name == 'GSL_SI_Skeleton':
         train_prefix = "train"

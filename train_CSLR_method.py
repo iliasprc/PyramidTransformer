@@ -125,8 +125,9 @@ def main():
 
     optimizer, scheduler = select_optimizer(model, config['model'], None)
 
-    log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     log.info(f"{model}")
+    log.info(f"Checkpoint Folder {cpkt_fol_name} ")
+
     trainer = Trainer_CSLR_method(config=config, model=model, optimizer=optimizer,
                                   data_loader=training_generator, writer=writer, id2w=id2w,
                                   valid_data_loader=val_generator, test_data_loader=test_generator,

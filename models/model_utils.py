@@ -64,6 +64,9 @@ def CSLR_video_encoder(config, N_classes):
     elif config.model.name == 'RGBSK':
         from models.multimodal.mmodal_rgbsk import RGBSK_model
         return RGBSK_model(N_classes=N_classes)
+    elif config.model.name =='ir_csn_152_1d':
+        from models.multimodal.mutimodal_model import ir_csn_152_1d
+        return ir_csn_152_1d(num_classes=N_classes)
 
 def ISLR_video_encoder(config, N_classes):
     from models.cslr.i3d import InceptionI3d,SLR_I3D
@@ -86,7 +89,9 @@ def ISLR_video_encoder(config, N_classes):
     elif config.model.name == 'Pyramid_Transformer':
         return ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                                       num_classes=N_classes)
-
+    elif config.model.name =='ir_csn_152_1d':
+        from models.multimodal.mutimodal_model import ir_csn_152_1d
+        return ir_csn_152_1d(num_classes=N_classes)
 
 def RGBD_model(config, N_classes):
     if config.model.name == 'RGBD_Transformer':

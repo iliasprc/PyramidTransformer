@@ -64,7 +64,9 @@ class AUTSLSkeleton(Base_dataset):
                 self.labels.append(label)
 
         print(f'Samples {len(self.list_IDs)} {self.mode} modality {self.modal}')
-
+        print(self.config.dataset.input_data)
+        self.data_dir = os.path.join(self.config.dataset.input_data,'challenge/skeleton')
+        #self.config.dataset.input_data = os.path.join(self.config.dataset.input_data,'skeleton')
     def __len__(self):
         return len(self.list_IDs)
 
@@ -76,7 +78,7 @@ class AUTSLSkeleton(Base_dataset):
             aug = 'train'
 
             vid_name = f'{self.list_IDs[index]}_color.mp4.npy'
-            vid_tensor = np.load(os.path.join(self.config.dataset.input_data, 'train', vid_name))/512.0 -0.5
+            vid_tensor = np.load(os.path.join(self.data_dir, 'train', vid_name))/512.0 -0.5
             #print(vid_tensor.shape)
             T = vid_tensor.shape[0]
             num_of_images = list(range(T))
@@ -100,7 +102,7 @@ class AUTSLSkeleton(Base_dataset):
             aug = 'test'
             #print(self.list_IDs[index])
             vid_name = f'{self.list_IDs[index]}_color.mp4.npy'
-            vid_tensor = np.load(os.path.join(self.config.dataset.input_data, 'val', vid_name))/512.0-0.5
+            vid_tensor = np.load(os.path.join(self.data_dir, 'val', vid_name))/512.0-0.5
             #print(vid_tensor.max(),vid_tensor.min())
             T = vid_tensor.shape[0]
             num_of_images = list(range(T))

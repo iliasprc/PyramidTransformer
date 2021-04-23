@@ -4,17 +4,17 @@ trainer_cslr:
   epochs: 30 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
-  gpu: 0 # id of gpu
+  gpu: 1 # id of gpu
   save: True # save checkpoint
   load: True  # load pretrained checkpoint
   gradient_accumulation: 2 # gradient accumulation steps
-  pretrained_cpkt: /home/papastrat/Desktop/ilias/SLR_checkpoints/I3D/i3d_msasl_gsl_date_20_09_2020_20.23.07/bestgenerator.pth
-  log_interval: 1000 # print statistics every log_interval
+  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_I3D/dataset_MULTI_ISLR/date_09_04_2021_15.38.29/best_model_epoch.pth
+  log_interval: 5000 # print statistics every log_interval
   model:
     name: CSLR_I3D # model name
     optimizer: # optimizer configuration
       type: Adam # optimizer type
-      lr: 1e-4 # learning rate
+      lr: 1e-5 # learning rate
       weight_decay: 0.000001 # weight decay
     scheduler: # learning rate scheduler
       type: ReduceLRonPlateau # type of scheduler
@@ -26,7 +26,7 @@ trainer_cslr:
     train:
       batch_size: 1 # batch size
       shuffle: True # shuffle samples after every epoch
-      num_workers: 2 # number of thread for dataloader1
+      num_workers: 4 # number of thread for dataloader1
     val:
       batch_size: 1
       shuffle: False
@@ -44,7 +44,7 @@ trainer_cslr:
     padding : False # pad videos
     dim: [224,224] # frame dimension
     train:
-      seq_length: 310 # number of frames for each video
+      seq_length: 400 # number of frames for each video
       augmentation: True # do augmentation to video
     val:
       seq_length: 400
