@@ -1,0 +1,54 @@
+tester:
+  cwd: /home/papastrat/PycharmProjects/PyramidTransformer # working directory
+  logger: SLR_challenge # logger name
+  epochs: 30 # number of training epochs
+  seed: 1234 # randomness seed
+  cuda: True # use nvidia gpu
+  gpu: 0,1 # id of gpu
+  save: True # save checkpoint
+  load: False # load pretrained checkpoint
+  gradient_accumulation: 16 # gradient accumulation steps
+  pretrained_cpkt: /home/iliask/PycharmProjects/SLVTP/checkpoints/trained_cpkts/RGBD_best_93.28/best_model_epoch_2.pth
+  log_interval: 1000 # print statistics every log_interval
+  model:
+    name: RGBD_Transformer # model name
+    optimizer: # optimizer configuration
+      type: SGD # optimizer type
+      lr: 1e-2 # learning rate
+      weight_decay: 0.000001 # weight decay
+    scheduler: # learning rate scheduler
+      type: ReduceLRonPlateau # type of scheduler
+      scheduler_factor: 0.5 # learning rate change ratio
+      scheduler_patience: 0 # patience for some epochs
+      scheduler_min_lr: 1e-3 # minimum learning rate value
+      scheduler_verbose: 5e-6 # print if learning rate is changed
+  dataloader:
+    train:
+      batch_size: 4 # batch size
+      shuffle: True # shuffle samples after every epoch
+      num_workers: 4 # number of thread for dataloader
+    val:
+      batch_size: 4
+      shuffle: False
+      num_workers: 4
+    test:
+      batch_size: 1
+      shuffle: False
+      num_workers: 2
+  dataset:
+    input_data: data/
+    name: AUTSL # dataset name
+    modality: RGB,Depth # type of modality
+    classes: 226 # number of classes
+    normalize: True # mean, std normalization
+    padding : True # pad videos
+    dim: [224,224] # frame dimension
+    train:
+      seq_length: 64 # number of frames for each video
+      augmentation: True # do augmentation to video
+    val:
+      seq_length: 64
+      augmentation: False
+    test:
+      seq_length: 64
+      augmentation: False

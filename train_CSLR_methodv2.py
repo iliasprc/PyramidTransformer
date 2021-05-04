@@ -80,7 +80,7 @@ def main():
     shutil.copy(os.path.join(config.cwd, config_file), cpkt_fol_name)
 
     # log.info("date and time =", dt_string)
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
     log.info(f'pyTorch VERSION:{torch.__version__}', )
     log.info(f'CUDA VERSION')
 
@@ -108,11 +108,11 @@ def main():
 
 
     if (config.load):
-        model.fc = torch.nn.Linear(2048, 226)
-
-        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-
-        model.fc = torch.nn.Linear(2048, len(classes))
+        model.fc = torch.nn.Linear(1024, 2042)
+        model.cnn.replace_logits(2042)
+        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model.cnn, strict=True, load_seperate_layers=False)
+        model.cnn.replace_logits(311)
+        model.fc = torch.nn.Linear(1024, 311)
 
     else:
         pth_file = None
@@ -125,8 +125,9 @@ def main():
 
     optimizer, scheduler = select_optimizer(model, config['model'], None)
 
-    log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     log.info(f"{model}")
+    log.info(f"Checkpoint Folder {cpkt_fol_name} ")
+
     trainer = Trainer_CSLR_method(config=config, model=model, optimizer=optimizer,
                                   data_loader=training_generator, writer=writer, id2w=id2w,
                                   valid_data_loader=val_generator, test_data_loader=test_generator,

@@ -10,6 +10,43 @@ from PIL import Image
 from torchvision import transforms
 
 
+
+def read_gsl_continuous_classes(path):
+    indices, classes = [], []
+    classes.append('blank')
+    indices.append(0)
+    data = open(path, 'r').read().splitlines()
+    count = 1
+    for d in data:
+        label = d
+
+        indices.append(count)
+        classes.append(label)
+        count += 1
+
+    id2w = dict(zip(indices, classes))
+
+    return indices, classes, id2w
+
+
+
+def read_gsl_continuous(csv_path):
+    paths, glosses_list = [], []
+    classes = []
+    data = open(csv_path, 'r').read().splitlines()
+    for item in data:
+        if (len(item.split('|')) < 2):
+            print("\n {} {} {} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n".format(item, path, csv_path))
+        path, glosses = item.split('|')
+        # path = path.replace(' GSL_continuous','GSL_continuous')
+
+        paths.append(path)
+        # print(path)
+
+        glosses_list.append(glosses)
+    return paths, glosses_list
+
+
 def read_autsl_csv(csv_path):
     paths, glosses_list = [], []
     classes = []
@@ -68,13 +105,13 @@ def read_autsl_labels(csv_path):
 
 
 def read_autsl_labelsv2(csv_path):
-    # # signers_val = ['signer11', 'signer16', 'signer18', 'signer1', 'signer25', 'signer35']
-    # signers_train = ['signer0', 'signer10', 'signer12', 'signer13', 'signer15', 'signer17', 'signer19', 'signer20',
-    #                  'signer21', 'signer22', 'signer23', 'signer24', 'signer26', 'signer28', 'signer29', 'signer2',
-    #                  'signer31', 'signer32', 'signer33', 'signer36', 'signer37', 'signer38', 'signer3', 'signer40',
-    #                  'signer41', 'signer42', 'signer4', 'signer5', 'signer7', 'signer8', 'signer9']
+    #signers_val = ['signer11', 'signer16', 'signer18', 'signer1', 'signer25', 'signer35']
+    signers_train = ['signer0', 'signer10', 'signer12', 'signer13', 'signer15', 'signer17', 'signer19', 'signer20',
+                     'signer21', 'signer22', 'signer23', 'signer24', 'signer26', 'signer28', 'signer29', 'signer2',
+                     'signer31', 'signer32', 'signer33', 'signer36', 'signer37', 'signer38', 'signer3', 'signer40',
+                     'signer41', 'signer42', 'signer4', 'signer5', 'signer7', 'signer8', 'signer9']
 
-    # signers_val = signers_train[0:6]
+    signers_val = signers_train[0:6]
 
     train_paths, train_labels = [], []
     classes = []
@@ -184,11 +221,18 @@ def pad_video(x, padding_size=0, padding_type='images'):
     Returns:
 
     """
+    # print(padding_size ,'pad size')
+    assert len(x.shape) == 4
     if padding_size != 0:
         if padding_type == 'images':
-            pad_img = x[0]
-            padx = pad_img.repeat(padding_size, 1, 1, 1)
-            X = torch.cat((padx, x))
+            if random.uniform(0, 1) > 0.5:
+                pad_img = x[0]
+                padx = pad_img.repeat(padding_size, 1, 1, 1)
+                X = torch.cat((padx, x))
+            else:
+                pad_img = x[-1]
+                padx = pad_img.repeat(padding_size, 1, 1, 1)
+                X = torch.cat(( x,padx))
             return X
         elif padding_type == 'zeros':
             T, C, H, W = x.size()
@@ -197,6 +241,32 @@ def pad_video(x, padding_size=0, padding_type='images'):
             return X
     return x
 
+
+
+def skeleton_augment(x):
+    # if random.uniform(0, 1) > 0.5:
+    #     # flip skeleton x and y only
+    #     x[...,0:2] = -x[...,0:2]
+    # if random.uniform(0, 1) > 0.7:
+    #     new_pos = torch.rand(2)/200.0
+    #     x[...,0:2]+=new_pos
+
+    return x
+
+
+
+def pad_skeleton(x, padding_size=0):
+    assert len(x.shape) == 3
+    if padding_size != 0:
+        if random.uniform(0, 1) > 0.5:
+            pad_img = x[0]
+            padx = pad_img.repeat(padding_size, 1, 1)
+            X = torch.cat((padx, x),dim=0)
+        else:
+            pad_img = x[-1]
+            padx = pad_img.repeat(padding_size, 1, 1)
+            X = torch.cat((x, padx),dim=0)
+    return X
 
 def video_tensor_shuffle(x):
     # print(x.size())
@@ -216,7 +286,7 @@ def video_tensor_shuffle(x):
     return x
 
 
-def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=False, normalize=True, to_flip=False):
+def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=False, normalize=True, to_flip=False,grayscale= False,angle=0):
     """
     Image augmentation function
     Args:
@@ -233,9 +303,14 @@ def video_transforms(img, bright, cont, h, resized_crop=None, augmentation=False
     """
     if augmentation:
         t = transforms.ToTensor()
+        if angle !=0:
+            img = transforms.functional.rotate(img,angle)
+        if grayscale:
+            img = transforms.functional.to_grayscale(img,3)
         if to_flip:
             img = transforms.functional.hflip(img)
         img = resized_crop(img)
+        #print(f'resize {img.size}')
         img = transforms.functional.adjust_brightness(img, bright)
         img = transforms.functional.adjust_contrast(img, cont)
         img = transforms.functional.adjust_hue(img, h)
@@ -316,9 +391,9 @@ def load_video_sequence(path, time_steps, dim=(224, 224), augmentation='test', p
     tensor_imgs = torch.stack(img_sequence).float().permute(1, 0, 2, 3)
 
     if padding:
-        tensor_imgs = pad_video(tensor_imgs, padding_size=pad_len, padding_type='zeros')
+        tensor_imgs = pad_video(tensor_imgs, padding_size=pad_len, padding_type='images')
     elif len(images) < sign_length_check:
-        tensor_imgs = pad_video(tensor_imgs, padding_size=sign_length_check - len(images), padding_type='zeros')
+        tensor_imgs = pad_video(tensor_imgs, padding_size=sign_length_check - len(images), padding_type='images')
 
     return tensor_imgs
 

@@ -17,7 +17,7 @@ import torch.backends.cudnn as cudnn
 from omegaconf import OmegaConf
 from torch.utils.tensorboard import SummaryWriter
 
-from data_loader.dataset import RGBD_generators
+from data_loader.dataset import RGBD_generators,islr_datasets
 from models.model_utils import RGBD_model
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer_rgbd import TrainerRGBD
@@ -46,7 +46,7 @@ def main():
             if key in config.keys():
                 config[key] = v
     config.cwd = cwd
-
+    print(config)
     dt_string = now.strftime("%d_%m_%Y_%H.%M.%S")
     cpkt_fol_name = os.path.join(config.cwd,
                                  'checkpoints/model_' + config.model.name + '/dataset_' + config.dataset.name + '/date_' + dt_string)
@@ -73,7 +73,7 @@ def main():
         torch.cuda.manual_seed(config.seed)
     cudnn.benchmark = True
     cudnn.deterministic = True
-    training_generator, val_generator, test_generator, classes = RGBD_generators(config)
+    training_generator, val_generator, test_generator, classes = islr_datasets(config)
 
     model = RGBD_model(config, len(classes))
 
@@ -82,19 +82,20 @@ def main():
 
     device = torch.device("cuda:0" if use_cuda else "cpu")
     log.info(f'device {device}')
-    if torch.cuda.device_count() > 1:
-        log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
-
-        model = torch.nn.DataParallel(model)
     if config.load:
         log.info(f'LOAD RGB CPKT')
         pth_file, _ = load_checkpoint(
             config.rgb_cpkt,
-            model.rgb_encoder, strict=True, load_seperate_layers=False)
+            model.rgb_encoder, strict=False, load_seperate_layers=False)
         log.info(f'LOAD DEPTH CPKT')
-        pth_file, _ = load_checkpoint(
-            config.depth_cpkt,
-            model.depth_encoder, strict=False, load_seperate_layers=False)
+    if torch.cuda.device_count() > 1:
+        log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
+
+        model = torch.nn.DataParallel(model)
+
+        # pth_file, _ = load_checkpoint(
+        #     config.depth_cpkt,
+        #     model.depth_encoder, strict=False, load_seperate_layers=False)
 
     model.to(device)
     optimizer, scheduler = select_optimizer(model, config['model'])

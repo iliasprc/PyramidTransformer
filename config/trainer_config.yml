@@ -24,20 +24,20 @@ trainer:
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
-      batch_size: 8 # batch size
+      batch_size: 1 # batch size
       shuffle: False # shuffle samples after every epoch
-      num_workers: 4 # number of thread for dataloader1
+      num_workers: 1 # number of thread for dataloader1
     val:
-      batch_size: 8
+      batch_size: 1
       shuffle: False
-      num_workers: 4
+      num_workers: 1
     test:
       batch_size: 1
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets/Greek_isolated/GSL_isol
-    name: GSL_ISO # dataset name
+    input_data: /home/papastrat/Desktop/ilias/datasets/
+    name: AUTSL_RGB_SK # dataset name
     modality: RGB # type of modality
     classes: 311 # number of classes
     normalize: True # mean, std normalization

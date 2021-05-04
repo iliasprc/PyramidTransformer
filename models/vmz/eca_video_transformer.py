@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from models.attentions.attentions import ECA_3D
-from models.vmz.layers import IPConv3DDepthwise, BasicStem, BasicStem_Pool, SpatialModulation
+from models.vmz.layers import IPConv3DDepthwise, BasicStem, BasicStem_Pool, SpatialModulation3D
 from models.vmz.utils import model_urls
 from .resnet import Bottleneck
 
@@ -36,11 +36,11 @@ class ECAVideoTransformer(nn.Module):
         # self.eca2 = ECA_3D(1, k_size=5)
         self.layer3 = self._make_layer(block, conv_makers[2], 256, layers[2], stride=2)
         self.eca3 = ECA_3D(1, k_size=7)
-        self.tpn3 = SpatialModulation(256 * block.expansion, downsample_scale=16, k=3, s=1, d=2)
+        self.tpn3 = SpatialModulation3D(256 * block.expansion, downsample_scale=16, k=3, s=1, d=2)
         self.layer4 = self._make_layer(block, conv_makers[3], 512, layers[3], stride=2)
         self.eca4 = ECA_3D(1, k_size=9)
 
-        self.tpn4 = SpatialModulation(512 * block.expansion, downsample_scale=8, k=1, s=1, d=1)
+        self.tpn4 = SpatialModulation3D(512 * block.expansion, downsample_scale=8, k=1, s=1, d=1)
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
 
         self.fc = nn.Linear(512 * block.expansion, num_classes)

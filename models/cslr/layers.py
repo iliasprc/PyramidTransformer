@@ -1,15 +1,40 @@
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from einops import rearrange
-from einops import repeat
 
 model_urls = {
     'r3d_18': 'https://download.pytorch.org/models/r3d_18-b3b3357e.pth',
     'mc3_18': 'https://download.pytorch.org/models/mc3_18-a90a0ba3.pth',
     'r2plus1d_18': 'https://download.pytorch.org/models/r2plus1d_18-91a641e6.pth',
 }
+
+import torch
+import torch.nn as nn
+from einops import repeat, rearrange
+import torch.nn.functional as F
+
+
+def expand_to_batch(tensor, desired_size):
+    tile = desired_size // tensor.shape[0]
+    return repeat(tensor, 'b ... -> (b tile) ...', tile=tile)
+
+
+class PositionalEncoding1D(nn.Module):
+
+    def __init__(self, dim, dropout=0.1, max_tokens=64):
+        super(PositionalEncoding1D, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(1, max_tokens, dim)
+        position = torch.arange(0, max_tokens, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, dim, 2).float() * (-torch.log(torch.Tensor([10000.0])) / dim))
+        pe[..., 0::2] = torch.sin(position * div_term)
+        pe[..., 1::2] = torch.cos(position * div_term)
+        # pe = pe.unsqueeze(0).transpose(0, 1)
+        self.pe = pe.cuda()
+
+    def forward(self, x):
+        batch, seq_tokens, _ = x.size()
+        x = x + expand_to_batch(self.pe[:, :seq_tokens, :], desired_size=batch)
+        return self.dropout(x)
 
 
 class ECA_3D(nn.Module):
@@ -367,7 +392,7 @@ class SpatialModulation(nn.Module):
         else:
             # print(x.shape)
             x = self.transformer_encoder(x)
-            x = torch.mean(x,dim=1,keepdim=True)
+            x = torch.mean(x, dim=1, keepdim=True)
 
             # x = self.classifier(x)
 

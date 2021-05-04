@@ -189,7 +189,7 @@ class CTC_Loss(nn.Module):
             criterion = nn.CTCLoss(blank=0, reduction='sum', zero_infinity=True)
         input_len = torch.tensor([log_probs.size(0)], dtype=torch.int)
         target_len = torch.tensor([target.size(1)], dtype=torch.int)
-        loss = criterion(nn.functional.log_softmax(log_probs, dim=2), target, input_len, target_len)
+        loss = criterion(nn.functional.log_softmax(log_probs, dim=-1), target, input_len, target_len)
         return loss
 
     def Aggregation_CE(self, outputs, target):

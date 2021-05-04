@@ -1,0 +1,10 @@
+model: model.decouple_gcn_attn.Model
+model_args:
+  num_class: 226
+  num_point: 27
+  num_person: 1
+  graph: graph.sign_27.Graph
+  groups: 16
+  block_size: 41
+  graph_args:
+    labeling_mode: 'spatial'
