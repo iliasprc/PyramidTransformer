@@ -61,7 +61,7 @@ class Trainer_CSLR_method(BaseTrainer):
         self.model.train()
 
         self.train_metrics.reset()
-        n_critic = 1
+        n_critic = 2
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
 
             data = data.to(self.device)
@@ -184,7 +184,7 @@ class Trainer_CSLR_method(BaseTrainer):
         for epoch in range(self.start_epoch, self.epochs):
             self._train_epoch(epoch)
 
-            #self.logger.info("!" * 10, "   VALIDATION   ", "!" * 10)
+            self.logger.info(f"   VALIDATION  ")
             werr = self._valid_epoch(epoch, 'dev', self.valid_data_loader)
             #werr = 0
             check_dir(self.checkpoint_dir)

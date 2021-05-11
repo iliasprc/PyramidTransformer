@@ -1,39 +1,13 @@
 import math
+import random
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from einops import repeat, rearrange
 
 from utils.ctc_loss import CTC_Loss
-
-
-def expand_to_batch(tensor, desired_size):
-    tile = desired_size // tensor.shape[0]
-    return repeat(tensor, 'b ... -> (b tile) ...', tile=tile)
-
-
-class PositionalEncoding1D(nn.Module):
-
-    def __init__(self, dim, dropout=0.1, max_tokens=64):
-        super(PositionalEncoding1D, self).__init__()
-        self.dropout = nn.Dropout(p=dropout)
-
-        pe = torch.zeros(1, max_tokens, dim)
-        position = torch.arange(0, max_tokens, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, dim, 2).float() * (-torch.log(torch.Tensor([10000.0])) / dim))
-        pe[..., 0::2] = torch.sin(position * div_term)
-        pe[..., 1::2] = torch.cos(position * div_term)
-        # pe = pe.unsqueeze(0).transpose(0, 1)
-        self.pe = pe.cuda()
-
-    def forward(self, x):
-        batch, seq_tokens, _ = x.size()
-        x = x + expand_to_batch(self.pe[:, :seq_tokens, :], desired_size=batch)
-        return self.dropout(x)
-
-
+from einops import rearrange
 class MaxPool3dSamePadding(nn.MaxPool3d):
 
     def compute_pad(self, dim, s):
@@ -209,7 +183,7 @@ class InceptionI3d(nn.Module):
         'Predictions',
     )
 
-    def __init__(self, num_classes=400, temporal_resolution=16, mode='isolated', spatial_squeeze=True,
+    def __init__(self, num_classes=400, temporal_resolution=16, mode='continuous', spatial_squeeze=True,
                  final_endpoint='Logits', name='inception_i3d', in_channels=3, dropout_keep_prob=0.5):
         """Initializes I3D model instance.
         Args:
@@ -241,8 +215,8 @@ class InceptionI3d(nn.Module):
         self._final_endpoint = final_endpoint
         self.logits = None
         self.temp_resolution = temporal_resolution
-        last_duration = int(math.ceil(16 / 8))
-        # if (self.mode == 'unfold' or self.mode == 'features'):
+        last_duration = int(math.ceil(16/ 8))
+        #if (self.mode == 'unfold' or self.mode == 'features'):
         self.window_size = 16
         self.stride = 8
         print("Train with sliding window size {} stride {}".format(self.window_size, self.stride))
@@ -328,7 +302,7 @@ class InceptionI3d(nn.Module):
         end_point = 'Logits'
         self.avg_pool = nn.AvgPool3d(kernel_size=[last_duration, 7, 7],
                                      stride=(1, 1, 1))
-        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        self.avg_pool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.dropout = nn.Dropout(dropout_keep_prob)
         self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
                              kernel_shape=[1, 1, 1],
@@ -337,17 +311,9 @@ class InceptionI3d(nn.Module):
                              use_batch_norm=False,
                              use_bias=True,
                              name='logits')
-
         self.loss = CTC_Loss()
 
         self.build()
-        # self.rnn = nn.LSTM(
-        #     input_size=1024,
-        #     hidden_size=self.hidden_size,
-        #     num_layers=self.num_layers,
-        #     dropout=self.rnn_dropout,
-        #     bidirectional=True)
-        # self.freeze_param()
 
     def replace_logits(self, num_classes):
         self._num_classes = num_classes
@@ -363,11 +329,10 @@ class InceptionI3d(nn.Module):
         for k in self.end_points.keys():
             self.add_module(k, self.end_points[k])
 
-    def forward(self, x, y=None):
+    def forward(self, x , y=None):
 
         if (self.mode == 'isolated'):
-            # with torch.no_grad():
-            x = x  # .permute(0, 2, 1, 3, 4)
+
             for end_point in self.VALID_ENDPOINTS:
                 if end_point in self.end_points:
                     # print(x.size())
@@ -376,35 +341,32 @@ class InceptionI3d(nn.Module):
             x = self.dropout(self.avg_pool(x))
 
             logits = self.logits(x)
-            y_hat = logits.squeeze(-1).squeeze(-1).squeeze(-1)
-            if y != None:
-                loss = F.cross_entropy(y_hat, y.squeeze(-1))
-                return y_hat, loss
-            return y_hat
+            return logits.squeeze(-1).squeeze(-1)
         elif (self.mode == 'continuous'):
-            # print(x.shape)
+            #print(x.shape)
+            self.window_size = random.randint(16,18)
+            self.stride = random.randint(self.window_size//2 +1,self.window_size-1)
             x = x.unfold(2, self.window_size, self.stride).squeeze(0)
-            # print(x.shape)
+            #print(x.shape)
             x = rearrange(x, 'c n h w t -> n c t h w')
-            # print(x.shape)
-            # with torch.no_grad():
-            for end_point in self.VALID_ENDPOINTS:
-                if end_point in self.end_points:
-                    # print(x.size())
-                    x = self._modules[end_point](x)  # use _modules to work with dataparallel
+            #print(x.shape)
+            with torch.no_grad():
+                for end_point in self.VALID_ENDPOINTS:
+                    if end_point in self.end_points:
+                        # print(x.size())
+                        x = self._modules[end_point](x)  # use _modules to work with dataparallel
 
             x = self.dropout(self.avg_pool(x))
-
+            #print(f"feats {x.shape}")
+            return x
             # logits = self.logits(x)
             # print(x.size())
             final_time, dim, _, _, _ = x.size()
 
-            features = rearrange(x, 't dim d h w -> t (d h w) dim')
-            # print(features.size())
-            return features
+
             y_hat = self.logits(x)
-            y_hat = rearrange(y_hat, 't classes d h w -> t (d h w) classes')
-            # print(y_hat.size())
+            y_hat = rearrange(y_hat,'t classes d h w -> t (d h w) classes')
+            #print(y_hat.size())
             if y != None:
                 loss_ctc = self.loss(y_hat, y)
                 return y_hat, loss_ctc
@@ -428,110 +390,128 @@ class InceptionI3d(nn.Module):
         for end_point in self.VALID_ENDPOINTS:
             if end_point in self.end_points:
                 x = self._modules[end_point](x)
-        return self.avg_pool(x)
-
-    def freeze_param(self):
-        count = 0
-        for name, param in self.named_parameters():
-            count += 1
-            print(name)
-            if 'Conv3d_' in name or 'Mixed_3' in name:
-                param.requires_grad = False
-
-            else:
-                param.requires_grad = True
-
+        return self.dropout(self.avg_pool(x))
 
 class SLR_I3D(nn.Module):
-    def __init__(self, num_classes=400, mode='continuous', temporal_resolution=25):
+    def __init__(self, num_classes=400, mode='continuous', temporal_resolution=24):
+        """
+
+        :param num_classes: Number of output classes
+        :param mode: 'Continuous' or 'isolated'
+        :param temporal_resolution: Temporal windows size
+        """
         super(SLR_I3D, self).__init__()
-        self.hidden_size = 512
-        self.num_layers = 2
+        hidden_size = 512
+        n_layers = 2
+        dropt = 0.5
+        bi = True
+        self.hidden_size = hidden_size
+        self.num_layers = n_layers
         self.n_classes = num_classes
         self.mode = mode
 
-        self.rnn_dropout = 0.4
-        self.bidirectional = True
+        self.rnn_dropout = dropt
+        self.bidirectional = bi
 
-        self.cnn = InceptionI3d(num_classes=100, temporal_resolution=temporal_resolution, mode='continuous',
+        self.cnn = InceptionI3d(num_classes=400, temporal_resolution=temporal_resolution, mode='isolated',
                                 in_channels=3)
-        print("load imagenet  weights")
-        # cpkt = torch.load('/home/papastrat/Desktop/ilias/SLR_checkpoints/i3d_ms_asl100_.pth',
-        #                map_location='cpu')
-        # self.cnn.load_state_dict(
-        #     cpkt['model_dict'])
+
         self.cnn.replace_logits(self.n_classes)
-        self.use_transformer = False
-        if not self.use_transformer:
-            self.rnn = nn.LSTM(
-                input_size=1024,
-                hidden_size=self.hidden_size,
-                num_layers=self.num_layers,
-                dropout=self.rnn_dropout,
-                bidirectional=True)
-        else:
-            self.pe = PositionalEncoding1D(1024, dropout=0.1, max_tokens=300)
-            encoder_layer = nn.TransformerEncoderLayer(d_model=1024, dim_feedforward=2048, nhead=8, dropout=0.2)
-            self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1)
-            #self.cls_token = nn.Parameter(torch.randn(1, 1024))
-            self.fc=nn.Linear(1024,311)
 
+        self.rnn = nn.LSTM(
+            input_size=1024,
+            hidden_size=self.hidden_size,
+            num_layers=self.num_layers,
+            dropout=self.rnn_dropout,
+            bidirectional=True)
         self.freeze_param()
+        self.window = 16
+        self.stride = 10
+        # print()
 
-        self.loss = CTC_Loss(average=True)
+        self.loss = CTC_Loss()
+    def forward(self, x,y=None):
+        # print('dfsdfsdafgdsafdsgfsdg')
+        if (False ):# self.mode == 'isolated'):
+            c_outputs = []
+            # print(x.size())
+            # x = rearrange(x,'b t c h w -> ')
+            x = x.unfold(1, self.window, self.stride).squeeze(0)
+            print(x.shape)
+            x = rearrange(x, 'num c h w t -> num c t h w')
+            print(x.shape)
+            num, c, t, h, w = x.shape
+            for i in range(num):
+                clip = x[i].unsqueeze(0)
+                out = self.cnn(clip)
+                c_outputs.append(out)
 
-    def forward(self, x, y=None):
-
-        #batch_size, time, channels, height, width = x.size()
-        vid = x.size()
-        #print('input ',vid)
-        with torch.no_grad():
-            x = self.cnn(x)
-        b = x.shape[0]
-        #print('after cnn',x.shape)
-        # print("Before after {}".format(x.size()))
-
-        # print(vid,'----> ',x.size())
-        if not self.use_transformer:
-            r_out, (h_n, h_c) = self.rnn(x)
-            # r_out = x
-
-            x = self.cnn.logits(r_out.permute(1, 2, 0).unsqueeze(-1).unsqueeze(-1))
-            # print('logits ',x.size())
-            y_hat = x.squeeze(-1).squeeze(-1).permute(2, 0, 1)
-            #x = self.fc(x)
-            # print('logits ',x.size())
-            #y_hat = x #.squeeze(-1).squeeze(-1).permute(2, 0, 1)
-            if y != None:
-                loss_ctc = self.loss(y_hat, y)
-                return y_hat, loss_ctc
-            return y_hat
+            c_out = torch.stack(c_outputs)
+            print(c_out.shape)
+            return c_out
         else:
-            x = rearrange(x, 't b c -> b t c')
-            x = self.pe(x)
+            c_outputs = []
+            # print(x.size())
+            # x = rearrange(x,'b t c h w -> ')
+            #print(x.shape)
+            self.window_size = random.randint(12,18)
+            self.stride = random.randint(self.window_size//2 +1,self.window_size-1)
+            #x = x.unfold(2, self.window_size, self.stride).squeeze(0)
+            x = x.unfold(2, self.window, self.stride).squeeze(0)
+            #print(x.shape)
+            x = rearrange(x, 'c num h w t -> num c t h w')
+            #print(x.shape)
+            num, c, t, h, w = x.shape
+            for i in range(num):
+                clip = x[i].unsqueeze(0)
+                out = self.cnn.extract_features(clip)
+                c_outputs.append(out)
 
-            x = rearrange(x, 'b t c -> t b c')
+            c_out = torch.stack(c_outputs).squeeze(-1).squeeze(-1).squeeze(-1)
+        # print(x.size())
+        # print(c_out.shape)
+            #print(c_out.shape)
+            r_out, (h_n, h_c) = self.rnn(c_out)
+            # print(r_out.shape)
+            r_out = rearrange(r_out, 'num b c -> b c num').unsqueeze(-1).unsqueeze(-1)
+            x = self.cnn.logits(r_out)
+            # print('logits dfdsafs',x.size(), rearrange(x.squeeze(-1).squeeze(-1),'b classes t -> t b classes').shape)
+            y_hat= rearrange(x.squeeze(-1).squeeze(-1), 'b classes t -> t b classes')
 
-            #print('befor tr,',x.shape)
-            #
-
-            x = self.transformer_encoder(x)
-
-
-            #x = rearrange(x, 'b t d -> t b d')
-            #print('before fc ',x.shape)
-            y_hat = self.fc(x)
             if y != None:
                 loss_ctc = self.loss(y_hat, y)
                 return y_hat, loss_ctc
             return y_hat
+
+    def forward1(self, x,y=None):
+
+        # batch_size, time, channels, height, width = x.size()
+        x = self.cnn(x)
+        # print("Before {} after {}".format(time,x.size()))
+
+
+        x = rearrange(x,'t c d h w -> t (d h w) c')
+        #print(x.size())
+        r_out, (h_n, h_c) = self.rnn(x)
+
+        x = self.cnn.logits(r_out.permute(1, 2, 0).unsqueeze(-1).unsqueeze(-1))
+        #print('logits ',x.size())
+        y_hat = x.squeeze(-1).squeeze(-1).permute(2, 0, 1)
+        if y != None:
+            loss_ctc = self.loss(y_hat, y)
+            return y_hat, loss_ctc
+        return y_hat
+
 
     def freeze_param(self):
         count = 0
-        for param in self.cnn.parameters():
-            count += 1
+        for name,param in self.cnn.named_parameters():
 
-            param.requires_grad = False
+            count += 1
+            print(name)
+            if 'Conv3d' in  name or 'Mixed_3b' in name:
+                print(name)
+                param.requires_grad = False
         for param in self.cnn.logits.parameters():
             count += 1
 

@@ -4,29 +4,29 @@ trainer_cslr:
   epochs: 30 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
-  gpu: 1 # id of gpu
+  gpu: 0,1 # id of gpu
   save: True # save checkpoint
-  load: True  # load pretrained checkpoint
-  gradient_accumulation: 2 # gradient accumulation steps
-  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_I3D/dataset_MULTI_ISLR/date_09_04_2021_15.38.29/best_model_epoch.pth
-  log_interval: 5000 # print statistics every log_interval
+  load: True # load pretrained checkpoint
+  gradient_accumulation: w # gradient accumulation steps
+  pretrained_cpkt: /home/iliask/PycharmProjects/SLVTP/checkpoints/model_I3D/i3d_wasl_gsl_.pth
+  log_interval: 1000 # print statistics every log_interval
   model:
-    name: CSLR_I3D # model name
+    name: I3D # model name
     optimizer: # optimizer configuration
       type: Adam # optimizer type
-      lr: 1e-5 # learning rate
+      lr: 1e-4 # learning rate
       weight_decay: 0.000001 # weight decay
     scheduler: # learning rate scheduler
       type: ReduceLRonPlateau # type of scheduler
-      scheduler_factor: 0.5 # learning rate change ratio
-      scheduler_patience: 0 # patience for some epochs
+      scheduler_factor: 0.8 # learning rate change ratio
+      scheduler_patience: 2 # patience for some epochs
       scheduler_min_lr: 1e-5 # minimum learning rate value
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
       batch_size: 1 # batch size
       shuffle: True # shuffle samples after every epoch
-      num_workers: 4 # number of thread for dataloader1
+      num_workers: 2 # number of thread for dataloader1
     val:
       batch_size: 1
       shuffle: False
@@ -36,7 +36,7 @@ trainer_cslr:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets/
+    input_data: /home/iliask/Desktop/ilias/datasets/
     name: GSL_SI # dataset name
     modality: RGB # type of modality
     classes: 311 # number of classes
@@ -44,11 +44,11 @@ trainer_cslr:
     padding : False # pad videos
     dim: [224,224] # frame dimension
     train:
-      seq_length: 400 # number of frames for each video
+      seq_length: 250 # number of frames for each video
       augmentation: True # do augmentation to video
     val:
-      seq_length: 400
+      seq_length: 250
       augmentation: False
     test:
-      seq_length: 400
+      seq_length: 250
       augmentation: False

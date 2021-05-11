@@ -169,10 +169,22 @@ class GSL_SI(Base_dataset):
 
             frame1 = np.array(frame_o)
             #print(frame1.shape)
+            #print(bbox)
 
             if bbox != None:
+                bbox_scalex = random.uniform(0, 1)*0.2
+                x1 = bbox['x1']
+                x2 = bbox['x2']
+                y1  = bbox['y1']
+                y2 = bbox['y2']
+                bbox_scaley = random.uniform(0, 1)*0.2
+                x1 = int(max(0, x1 - int(bbox_scalex * x1)))
+                x2 = int(min(648, x2 + int(bbox_scalex * x2)))
+                y1 = int(max(0, y1 - int(bbox_scaley * y1)))
+                y2 = int(min(480, y2 + int(bbox_scaley * y2)))
                 #print('dfasdfdsf')
-                frame1 = frame1[:, bbox['x1']:bbox['x2']]
+                frame1 = frame1[y1:y2, x1:x2]
+                #cv2.imshow()
             else:
                 frame1 = frame1[:, crop_size:648 - crop_size]
             frame = Image.fromarray(frame1)
@@ -204,9 +216,25 @@ class GSL_SI(Base_dataset):
 
         if (self.padding):
             X1 = pad_video(X1, padding_size=pad_len, padding_type='images')
-        if (len(images) < 16):
+        if (len(images) < 25):
             X1 = pad_video(X1, padding_size=25 - len(images), padding_type='images')
         #print(X1.shape)
+        # import torchvision
+        # import cv2
+        # X2 = X1[1:]
+        # k = X1[-1].unsqueeze(0)
+        # X1 = X1-torch.cat((X2,k))
+        # # for i in range(len(X1)-1):
+        # #     tensor = X1[i]# -X1[i+1]
+        # #     #tensor2 =
+        # #     inv_normalize = torchvision.transforms.Normalize(
+        # #         mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
+        # #         std=[1 / 0.229, 1 / 0.224, 1 / 0.225]
+        # #     )
+        # #     inv_tensor = inv_normalize(tensor).permute(1,2,0).numpy()
+        # #     cv2.imshow('Frame',cv2.cvtColor(inv_tensor,cv2.COLOR_BGR2RGB))
+        # #     cv2.waitKey(30)
+        
         return X1.permute(1,0,2,3)
 
 

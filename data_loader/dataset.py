@@ -8,7 +8,7 @@ from data_loader.autsl.rgbd_loader import AUTSL_RGBD
 from data_loader.autsl.rgbdsk_loader import AUTSL_RGBD_SK
 from data_loader.loader_utils import read_autsl_csv
 from data_loader.gsl.dataloader_gsl_si import GSL_SI,read_gsl_continuous_classes
-from data_loader.gsl.dataloader_gsl_w import GSLW
+#from data_loader.gsl.dataloader_gsl_w import GSLW
 
 from data_loader.gsl.dataloader_gsl_si_sk import GSL_SI_Skeleton
 from data_loader.multi_slr.dataloader_multi_SLR import Multi_SLR

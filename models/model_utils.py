@@ -48,7 +48,7 @@ def CSLR_video_encoder(config, N_classes):
     if config.model.name == 'IR_CSN_152':
         return cslr_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
     elif config.model.name == 'I3D':
-        return InceptionI3d(num_classes=100)
+        return SLR_I3D(num_classes=100)
     elif config.model.name =='GoogLeNet_TConvs':
         return GoogLeNet_TConvs(N_classes=N_classes,mode='continuous')
     elif config.model.name == 'CSLR_I3D':

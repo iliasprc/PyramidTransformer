@@ -65,7 +65,7 @@ class Multi_SLR(Base_dataset):
             print("{} {} instances  ".format(len(self.list_video_paths), mode))
             self.mode = mode
         elif mode == test_prefix:
-            self.list_video_paths, self.list_glosses = read_files(os.path.join(self.config.cwd,dev_filepath))
+            self.list_video_paths, self.list_glosses = read_files(dev_filepath)
             # print(self.list_video_paths)
             print("{} {} instances  ".format(len(self.list_video_paths), mode))
             self.mode = mode
@@ -82,16 +82,16 @@ class Multi_SLR(Base_dataset):
 
     def __getitem__(self, index):
 
-        #index=0
+
         y = class2indextensor(classes=self.classes, target_label=self.list_glosses[index])
         #print(self.list_glosses[index],y)
         x = self.load_video_sequence(index, time_steps=self.seq_length, dim=self.dim,
-                                     mode=self.mode, padding=self.padding, normalize=self.normalize,
+                                     augmentation='test', padding=self.padding, normalize=self.normalize,
                                      img_type='jpg')
 
         return x, y
 
-    def load_video_sequence(self, index, time_steps, dim=(224, 224), mode='test', padding=False, normalize=True,
+    def load_video_sequence(self, index, time_steps, dim=(224, 224), augmentation='test', padding=False, normalize=True,
                             img_type='png'):
 
         path = os.path.join(self.data_path,self.list_video_paths[index])
@@ -107,7 +107,7 @@ class Multi_SLR(Base_dataset):
         h_flip = False
         img_sequence = []
         # print(images)
-        if (mode == 'train'):
+        if (augmentation == 'train'):
             ## training set temporal  AUGMENTATION
             temporal_augmentation = int((np.random.randint(80, 100) / 100.0) * len(images))
             if (temporal_augmentation > 15):
@@ -124,30 +124,28 @@ class Multi_SLR(Base_dataset):
         i = np.random.randint(0, 30)
         j = np.random.randint(0, 30)
 
-        brightness = 1 + random.uniform(-0.2, +0.2)
-        contrast = 1 + random.uniform(-0.2, +0.2)
-        hue = random.uniform(0, 1) / 5.0
-        to_flip = random.uniform(0, 1) > 0.5
-        grayscale = random.uniform(0, 1) > 0.8
+        brightness = 1 + random.uniform(-0.1, +0.1)
+        contrast = 1 + random.uniform(-0.1, +0.1)
+        hue = random.uniform(0, 1) / 20.0
+
         r_resize = ((256, 256))
-        angle = np.random.randint(-15, 15)
 
         # brightness = 1
         # contrast = 1
         # hue = 0
-        t1 = VideoRandomResizedCrop(dim[0], scale=(0.8, 1.2), ratio=(0.8, 1.2))
+        t1 = VideoRandomResizedCrop(dim[0], scale=(0.9, 1.0), ratio=(0.9, 1.1))
         for img_path in images:
 
             frame = Image.open(img_path)
             frame.convert('RGB')
 
             ## CROP BOUNDING BOX
-            if 'GSL_ISO' in path:
+            if 'Greek_isolated' in path:
                 crop_size = 120
                 frame = np.array(frame)
                 frame = frame[:, crop_size:648 - crop_size]
                 frame = Image.fromarray(frame)
-            if (mode == 'train'):
+            if (augmentation == 'train'):
 
                 ## training set DATA AUGMENTATION
 
@@ -156,7 +154,7 @@ class Multi_SLR(Base_dataset):
                 img_tensor = video_transforms(img=frame,  bright=brightness, cont=contrast, h=hue,
                                               resized_crop=t1,
                                               augmentation=True,
-                                              normalize=normalize,to_flip=to_flip,grayscale=grayscale,angle=angle)
+                                              normalize=normalize)
                 img_sequence.append(img_tensor)
             else:
                 # TEST set  NO DATA AUGMENTATION
@@ -171,17 +169,11 @@ class Multi_SLR(Base_dataset):
             print('empty ',path)
             X1 = torch.stack(img_sequence).float()
             print(X1.shape)
-            X1 = pad_video(X1, padding_size=pad_len - 1, padding_type='images')
+            X1 = pad_video(X1, padding_size=pad_len - 1, padding_type='zeros')
         # print(len(mages))
         elif (padding):
             X1 = torch.stack(img_sequence).float()
             # print(X1.shape)
-            X1 = pad_video(X1, padding_size=pad_len, padding_type='images')
+            X1 = pad_video(X1, padding_size=pad_len, padding_type='zeros')
         #print(X1.shape)
-
-        # X2 = X1[1:]
-        # k = X1[-1].unsqueeze(0)
-        # X2 = torch.cat((X2,k))
-        # #print(X2.shape)
-        # X1 = X1-X2
         return X1.permute(1,0,2,3)
