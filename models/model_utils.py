@@ -8,7 +8,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from models.multimodal.mutimodal_model import RGBD_Transformer
 from models.vmz.eca_ir_csn_152 import eca_ir_csn_152
 from models.vmz.ir_csn_152 import ir_csn_152
-from models.vmz.pyramid_transformer import ir_csn_152_transformer
+from models.vmz.pyramid_transformer import ir_csn_152_transformer,ir_csn_152_timesformer
 from models.skeleton.skeleton_transformer import SkeletonTR,CSLRSkeletonTR,SK_TCL
 from models.cslr.googlenet_tcl import GoogLeNet_TConvs
 from models.gcn.model.decouple_gcn_attn import STGCN,STGCN_Transformer
@@ -92,7 +92,9 @@ def ISLR_video_encoder(config, N_classes):
     elif config.model.name =='ir_csn_152_1d':
         from models.multimodal.mutimodal_model import ir_csn_152_1d
         return ir_csn_152_1d(num_classes=N_classes)
-
+    elif config.model.name == 'ir_csn_152_timesformer':
+        return ir_csn_152_timesformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
+                                      num_classes=N_classes)
 def RGBD_model(config, N_classes):
     if config.model.name == 'RGBD_Transformer':
         m = RGBD_Transformer(config, N_classes)
