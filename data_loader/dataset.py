@@ -181,7 +181,7 @@ def islr_datasets(config):
         validation_prefix = "val"
         _, _, classes = read_autsl_csv(os.path.join(config.cwd, 'data_loader/autsl/train_labels.csv'))
         training_set = AUTSL_RGBD_SK(config, train_prefix, classes)
-        training_generator = data.DataLoader(training_set, **train_params)
+        training_generator = data.DataLoader(training_set, **train_params,drop_last=True)
 
         validation_set = AUTSL_RGBD_SK(config, validation_prefix, classes)
         validation_generator = data.DataLoader(validation_set, **val_params)

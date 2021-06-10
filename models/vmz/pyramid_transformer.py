@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 from models.transformers.timesformer import Timesformer
 from models.vmz.layers import BasicStem, BasicStem_Pool, SpatialModulation3D, Conv3DDepthwise, Bottleneck, ECA_3D
-
+from einops import rearrange
 model_urls = {
     "r2plus1d_34_8_ig65m"                     :
         "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch"
@@ -94,13 +94,13 @@ class PyramidTransformerResNet(nn.Module):
 
         # self.tpn2 = SpatialModulation(128 * block.expansion,128 * block.expansion, downsample_scale=32, k=5, s=2, d=4)
 
-        self.tpn3 = SpatialModulation3D(256 * block.expansion, downsample_scale=16, k=3, s=1, d=2)
+        #self.tpn3 = SpatialModulation3D(256 * block.expansion, downsample_scale=16, k=3, s=1, d=2)
 
         self.tpn4 = SpatialModulation3D(512 * block.expansion, downsample_scale=8, k=1, s=1, d=1)
-
-        # self.fc = nn.Linear(512 * block.expansion, num_classes)
-        self.eca = ECA_3D(k_size=11)
-        self.fc = nn.Linear((512 + 256) * 4, 226)
+        #
+        # # self.fc = nn.Linear(512 * block.expansion, num_classes)
+        # self.eca = ECA_3D(k_size=11)
+        self.fc = nn.Linear(( 256) * 4, 226)
 
         # init weights
         self._initialize_weights()
@@ -125,16 +125,16 @@ class PyramidTransformerResNet(nn.Module):
 
         # with torch.no_grad():
         x = self.layer3(x)
-        tpn3 = self.tpn3(x)  # + tpn2
+        #tpn3 = self.tpn3(x)  # + tpn2
         # print(f'layer 3 {x.shape} {tpn3.shape}')
         # with torch.no_grad():
         x = self.layer4(x)
         tpn4 = self.tpn4(x)  # + tpn3
-        # print(f'layer 4 {x.shape}  {tpn4.shape}')
+        # # print(f'layer 4 {x.shape}  {tpn4.shape}')
 
-        x_new = torch.cat((tpn3, tpn4), dim=-1)
+        x_new = tpn4#torch.cat((tpn3, tpn4), dim=-1)
 
-        y_hat = self.fc(x_new)
+        y_hat = x_new#self.fc(x_new)
         if y == None:
             return y_hat
         loss = F.cross_entropy(y_hat, y.squeeze(-1))
@@ -194,7 +194,7 @@ class PyramidTransformerResNet(nn.Module):
             nn.init.constant_(self.fc.bias, 0)
 
 
-def ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=False, progress=False, num_classes=226, **kwargs):
+def ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=True, progress=False, num_classes=226, **kwargs):
     avail_pretrainings = [
         "ig65m_32frms",
         "ig_ft_kinetics_32frms",
@@ -229,7 +229,7 @@ def ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=False, progres
             model_urls[arch], progress=progress
         )
         model.load_state_dict(state_dict, strict=False)
-        model.fc = nn.Linear(3072, 226)
+        model.fc = nn.Linear(1024, 226)
 
     return model
 
@@ -264,7 +264,7 @@ class TimesformerResNet(nn.Module):
 
 
         self.tpn3 = Timesformer(
-            img_dim=14, frames=14,
+            img_dim=14, frames=8,
             num_classes=226,
             in_channels=1024,
             patch_dim=7,
@@ -300,6 +300,8 @@ class TimesformerResNet(nn.Module):
 
         # with torch.no_grad():
         x = self.layer3(x)
+        #print(x.shape)
+        x = rearrange(x,'b c f h w -> b f c h w')
         y_hat = self.tpn3(x)  # + tpn2
         # print(f'layer 3 {x.shape} {tpn3.shape}')
         # with torch.no_grad():
@@ -364,7 +366,7 @@ class TimesformerResNet(nn.Module):
             nn.init.constant_(self.fc.bias, 0)
 
 
-def ir_csn_152_timesformer(pretraining="ig65m_32frms", pretrained=False, progress=False, num_classes=226, **kwargs):
+def ir_csn_152_timesformer(pretraining="ig65m_32frms", pretrained=True, progress=False, num_classes=226, **kwargs):
     avail_pretrainings = [
         "ig65m_32frms",
         "ig_ft_kinetics_32frms",

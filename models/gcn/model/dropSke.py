@@ -29,8 +29,13 @@ class DropBlock_Ske(nn.Module):
             warnings.warn('undefined skeleton graph')
         M_seed = torch.bernoulli(torch.clamp(
             input_abs * gamma, max=1.0)).to(device=input.device, dtype=input.dtype)
-        M = torch.matmul(M_seed, A)
-        M[M > 0.001] = 1.0
-        M[M < 0.5] = 0.0
+        M = torch.matmul(M_seed, A).cpu()
+        #print(M.shape,M[M > 0.00001].shape)
+        condition1 = M.clone().cpu() > 0.001
+        condition2 = M.clone().cpu()  < 0.5
+        M[condition1] = 1.0
+        #M[M.clone() > 0.001] = 1.0
+        M[condition2] = 0.0
+        M = M.cuda()
         mask = (1 - M).view(n, 1, 1, self.num_point)
         return input * mask * mask.numel() / mask.sum()

@@ -287,7 +287,7 @@ class STGCN(nn.Module):
                                num_point, block_size, stride=2)
         self.l9 = TCN_GCN_unit(256, 256, A, groups, num_point, block_size)
         self.l10 = TCN_GCN_unit(256, 256, A, groups, num_point, block_size)
-
+        self.decoder = nn.Linear(256*27,1024)
         self.fc = nn.Linear(256, num_class)
         nn.init.normal(self.fc.weight, 0, math.sqrt(2. / num_class))
         bn_init(self.data_bn, 1)
@@ -317,18 +317,23 @@ class STGCN(nn.Module):
         # N*M,C,T,V
         c_new = x.size(1)
 
-        # print(x.size())
+        #print('before eshape ',x.size())
         # print(N, M, c_new)
+        if False:
+            # x = x.view(N, M, c_new, -1)
+            x = x.reshape(N, M, c_new, -1)
+            print('Before mean ',x.shape)
+            x = x.mean(3).mean(1)
+            print('after mean ', x.shape)
+            y_hat = self.fc(x)
+            if y != None:
+                loss = F.cross_entropy(y_hat, y.squeeze(-1))
+                return y_hat, loss
+            return y_hat
 
-        # x = x.view(N, M, c_new, -1)
-        x = x.reshape(N, M, c_new, -1)
-        # print(x.shape)
-        x = x.mean(3).mean(1)
-        y_hat = self.fc(x)
-        if y != None:
-            loss = F.cross_entropy(y_hat, y.squeeze(-1))
-            return y_hat, loss
-        return y_hat
+        else:
+            x = rearrange(self.decoder(rearrange(x,'b c t v -> b t (c v)')),' b t c -> b c t')
+            return x
 
 
 class STGCN_Transformer(nn.Module):

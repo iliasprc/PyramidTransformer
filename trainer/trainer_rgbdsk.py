@@ -181,7 +181,10 @@ class TrainerRGBDSK(BaseTrainer):
             self.mnt_best = metric
 
             self.logger.info(f"Best val loss {self.mnt_best} so far ")
-
+        else:
+            self.gradient_accumulation = self.gradient_accumulation//2
+            if self.gradient_accumulation<2:
+                self.gradient_accumulation = 1
         save_checkpoint_slr(self.model, self.optimizer, epoch, self.valid_metrics.avg('loss'),
                             self.checkpoint_dir, '_model',
                             save_seperate_layers=True, is_best=is_best)

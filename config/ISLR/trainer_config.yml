@@ -4,14 +4,14 @@ trainer:
   epochs: 200 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
-  gpu: 0,1 # id of gpu
+  gpu: 0 # id of gpu
   save: True # save checkpoint
   load: False # load pretrained checkpoint
-  gradient_accumulation: 2 # gradient accumulation steps
-  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained/FINAL_nslt_2000_iters=5104_top1=32.48_top5=57.31_top10=66.31.pt
+  gradient_accumulation: 4 # gradient accumulation steps
+  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained_cpkts/MS_ASL_100/date_08_03_2021_11.54.49/best_model_epoch_8.pth
   log_interval: 1000 # print statistics every log_interval
   model:
-    name: ir_csn_152_timesformer # model name SkeletonTR
+    name: RGBDSK_Transformer # model name SkeletonTR
     optimizer: # optimizer configuration
       type: SGD # optimizer type
       lr: 1e-2 # learning rate
@@ -28,7 +28,7 @@ trainer:
       shuffle: True # shuffle samples after every epoch
       num_workers: 6 # number of thread for dataloader1
     val:
-      batch_size: 4
+      batch_size: 8
       shuffle: False
       num_workers: 4
     test:
@@ -36,8 +36,8 @@ trainer:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets
-    name: AUTSL # dataset name
+    input_data: /home/papastrat/Desktop/ilias/datasets/
+    name: AUTSL_RGBD_SK # dataset name
     modality: RGB # type of modality
     classes: 226 # number of classes
     normalize: True # mean, std normalization

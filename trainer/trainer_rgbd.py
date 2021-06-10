@@ -65,6 +65,7 @@ class TrainerRGBD(BaseTrainer):
         gradient_accumulation = self.gradient_accumulation
         for batch_idx, data in enumerate(self.train_data_loader):
             rgb_tensor, depth_tensor, y = data
+            print(len(data))
             rgb_tensor = rgb_tensor.to(self.device)
             depth_tensor = depth_tensor.to(self.device)
             y = y.to(self.device)

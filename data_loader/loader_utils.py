@@ -429,7 +429,7 @@ def load_video(path, time_steps, dim=(224, 224), augmentation='test', padding=Tr
     T, H, W, C = video_array.shape
     img_sequence = []
     num_of_images = list(range(T))
-    if augmentation == 'train':
+    if augmentation:
         temporal_augmentation = int((np.random.randint(80, 100) / 100.0) * T)
         # elif temporal_augmentation > 15:
         num_of_images = sampling_mode(training_random_sampling, num_of_images, temporal_augmentation)
@@ -461,16 +461,16 @@ def load_video(path, time_steps, dim=(224, 224), augmentation='test', padding=Tr
         w1 = int(round((im_w - crop_w) / 2.))
         h1 = int(round((im_h - crop_h) / 2.))
         # frame = frame.crop((w1, h1, w1 + crop_w, h1 + crop_h))
-        if augmentation == 'train':
+        if augmentation:
 
             frame = frame.resize(r_resize)
             img_tensor = video_transforms(img=frame, bright=brightness, cont=contrast, h=hue,
                                           resized_crop=t1,
-                                          augmentation='train',
+                                          augmentation=augmentation,
                                           normalize=normalize)
         else:
             frame = frame.resize(dim)
-            img_tensor = video_transforms(img=frame, bright=1, cont=1, h=0, augmentation='test',
+            img_tensor = video_transforms(img=frame, bright=1, cont=1, h=0, augmentation=False,
                                           normalize=normalize)
         img_sequence.append(img_tensor)
     pad_len = time_steps - len(num_of_images)

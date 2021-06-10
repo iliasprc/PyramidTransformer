@@ -17,7 +17,7 @@ import torch.backends.cudnn as cudnn
 from omegaconf import OmegaConf
 from torch.utils.tensorboard import SummaryWriter
 
-from data_loader.dataset import RGBD_generators,islr_datasets
+from data_loader.dataset import islr_datasets
 from models.model_utils import RGBD_model
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer_rgbdsk import TrainerRGBDSK
@@ -90,9 +90,12 @@ def main():
         log.info(f'LOAD DEPTH CPKT')
 
         pth_file, _ = load_checkpoint(
-             config.depth_cpkt,
-             model.depth_encoder, strict=False, load_seperate_layers=False)
+            config.depth_cpkt,
+            model.depth_encoder, strict=False, load_seperate_layers=False)
 
+        _, _ = load_checkpoint(
+            '/home/papastrat/PycharmProjects/SLVTP/checkpoints/model_STGCN/dataset_AUTSL_SK/date_08_04_2021_21.01.21/best_model_epoch_53.pth',
+            model.sk_encoder, strict=False, load_seperate_layers=False)
 
     if torch.cuda.device_count() > 1:
         log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
@@ -104,10 +107,10 @@ def main():
     log.info(f"{model}")
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     trainer = TrainerRGBDSK(config, model=model, optimizer=optimizer,
-                          data_loader=training_generator, writer=writer, logger=log,
-                          valid_data_loader=val_generator, test_data_loader=test_generator,
-                          lr_scheduler=scheduler,
-                          checkpoint_dir=cpkt_fol_name)
+                            data_loader=training_generator, writer=writer, logger=log,
+                            valid_data_loader=val_generator, test_data_loader=test_generator,
+                            lr_scheduler=scheduler,
+                            checkpoint_dir=cpkt_fol_name)
 
     trainer.train()
 

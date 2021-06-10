@@ -7,19 +7,19 @@ trainer:
   gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: True # load pretrained checkpoint
-  gradient_accumulation: 8 # gradient accumulation steps
+  gradient_accumulation: 16 # gradient accumulation steps
   rgb_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_IR_CSN_152/dataset_AUTSL/date_04_03_2021_10.03.02/best_model_epoch_19.pth
-  depth_cpkt: /home/papastrat/PycharmProjects/SLR_challenge-master/checkpoints/model_IR_CSN_152/dataset_Autsl/date_28_02_2021_11.15.59/best_model.pth
+  depth_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained/dept_pyramid_transformer_VAL_90.52/date_27_02_2021_23.12.18/best_model.pth
   log_interval: 1000 # print statistics every log_interval
   model:
     name: RGBDSK_Transformer # model name
     optimizer: # optimizer configuration
-      type: SGD # optimizer type
-      lr: 1e-2 # learning rate
-      weight_decay: 0.000001 # weight decay
+      type: Adam # optimizer type
+      lr: 1e-3 # learning rate
+      weight_decay: 0.00001 # weight decay
     scheduler: # learning rate scheduler
       type: ReduceLRonPlateau # type of scheduler
-      scheduler_factor: 0.5 # learning rate change ratio
+      scheduler_factor: 0.9 # learning rate change ratio
       scheduler_patience: 0 # patience for some epochs
       scheduler_min_lr: 1e-3 # minimum learning rate value
       scheduler_verbose: 5e-6 # print if learning rate is changed
@@ -27,9 +27,9 @@ trainer:
     train:
       batch_size: 8 # batch size
       shuffle: True # shuffle samples after every epoch
-      num_workers: 4 # number of thread for dataloader
+      num_workers: 6 # number of thread for dataloader
     val:
-      batch_size: 8
+      batch_size: 6
       shuffle: False
       num_workers: 4
     test:
@@ -39,7 +39,7 @@ trainer:
   dataset:
     input_data: /home/papastrat/Desktop/ilias/datasets # path of input data
     name: AUTSL_RGBD_SK # dataset name
-    modality: RGB,SK # type of modality
+    modality: RGB,SK,D # type of modality
     images_path: challenge/ # data directory
     classes: 226 # number of classes
     normalize: True # mean, std normalization

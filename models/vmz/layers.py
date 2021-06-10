@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 from einops import repeat
-
+from models.transformers.transformer import TransformerEncoder
 model_urls = {
     'r3d_18': 'https://download.pytorch.org/models/r3d_18-b3b3357e.pth',
     'mc3_18': 'https://download.pytorch.org/models/mc3_18-a90a0ba3.pth',
@@ -425,21 +425,22 @@ class SpatialModulation3D(nn.Module):
 
         self.pe = PositionalEncoding1D(dim = planes,max_tokens=max_tokens)
         self.pool = nn.AdaptiveAvgPool3d((downsample_scale, 7, 7))
-        encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.2)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        # encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=planes, nhead=8, dropout=0.2)
+        # self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.transformer_encoder = TransformerEncoder(dim=planes, blocks=2, heads=8, dim_head=64, dim_linear_block=planes*2, dropout=0.2)
         self.use_cls_token = True
         if self.use_cls_token:
             self.cls_token = nn.Parameter(torch.randn(1, planes ))
-        #     self.to_out = nn.Sequential(
-        #         nn.LayerNorm(planes//2),
-        #         nn.Linear(planes//2, 226)
-        #     )
-        # else:
-        #     self.classifier = nn.Linear(planes//2,226)
+            self.to_out = nn.Sequential(
+                nn.LayerNorm(planes),
+                nn.Linear(planes, 226)
+            )
+        else:
+            self.classifier = nn.Linear(planes//2,226)
 
     def forward(self, x):
         b = x.shape[0]
-        x = self.eca1(x)
+        #x = self.eca1(x)
         x = self.pool(x)  # self.relu(self.bn(self.conv(x))))
         # print(x.shape)
         x = rearrange(x, 'b c t h w -> (t h w) b c')
@@ -449,11 +450,11 @@ class SpatialModulation3D(nn.Module):
             # print(cls_token.shape,x.shape)
             x = torch.cat((cls_token, x), dim=0)
             #print(x.shape)
-            x = rearrange(self.pe(rearrange(x,'t b d -> b t d')),'b t d -> t b d')
+            x = self.pe(rearrange(x,'t b d -> b t d'))
             x = self.transformer_encoder(x)
-            # print(x.shape,x[0].shape)
-            cls_token = x[0]
-            return cls_token  # self.to_out(cls_token)
+            #print(x.shape,x[0].shape)
+            cls_token = x[:,0,:]
+            return self.to_out(cls_token)
         else:
             print(x.shape)
             x = self.transformer_encoder(x)
