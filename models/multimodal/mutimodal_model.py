@@ -459,6 +459,91 @@ class SkeletonTR(nn.Module):
         return y_hat
 
 
+
+
+class SkTR(nn.Module):
+    def __init__(self, mode='isolated', planes=128, N_classes=226):
+        super(SkTR, self).__init__()
+        self.embed = nn.Linear(27 * 3, planes)
+        # self.embed = nn.Sequential(nn.Linear(133*3,planes),nn.ReLU(),nn.Dropout(0.2),nn.Linear(planes,planes))
+
+        max_tokens = 33
+        self.tc_kernel_size = 3
+        self.tc_pool_size = 2
+        self.padding = 1
+
+        self.tcl = torch.nn.Sequential(
+
+            nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+            nn.ReLU(),
+            nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
+            nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+            nn.ReLU(),
+            nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size)
+
+           )
+        # self.pe = PositionalEncoding1D(dim = planes,max_tokens=max_tokens)
+        #
+        # self.transformer_encoder = TransformerEncoder(dim=planes, blocks=1, heads=8, dim_head=64, dim_linear_block=planes, dropout=0.1)
+        # # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
+        # # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        #
+        # self.use_cls_token = True
+        # self.mode = mode
+        # if mode == 'isolated':
+        #     self.loss = nn.CrossEntropyLoss()
+        #
+        # if self.use_cls_token:
+        #     self.cls_token = nn.Parameter(torch.randn(1, planes))
+        #     self.to_out = nn.Sequential(
+        #         nn.LayerNorm(planes),
+        #         nn.Linear(planes, N_classes)
+        #     )
+        # else:
+        #     self.classifier = nn.Linear(planes, N_classes)
+
+    def forward(self, x, y=None):
+        b = x.shape[0]
+
+        x = rearrange(x, 'b t k a -> b t (k a)')
+        x =self.embed(x)
+        x = rearrange(x, 'b t d -> b d t')
+        x = self.tcl(x)
+
+        #x = rearrange(x, 'b d t -> b t d')
+        return x
+
+        # x = self.pe(x)
+        #
+        # if self.use_cls_token:
+        #     cls_token = repeat(self.cls_token, 'n d -> b n d', b=b)
+        #     ##print(cls_token.shape,x.shape)
+        #     x = torch.cat((cls_token, x), dim=1)
+        #     ##print(x.shape)
+        #     x = rearrange(x, 'b t d -> t b d')
+        #
+        #     x = self.transformer_encoder(x)
+        #     ##print(x.shape,x[0].shape)
+        #     # cls_token = x
+        #     # if self.mode == 'isolated':
+        #     # print(x.shape)
+        #     cls_token = x[0]
+        #     return cls_token
+        #     y_hat = self.to_out(cls_token)
+        # else:
+        #     # #print(x.shape)
+        #     x = rearrange(x, 'b t d -> t b d')
+        #
+        #     x = self.transformer_encoder(x)
+        #     # x = self.transformer_encoder(rearrange(x, 't b d -> d b t'))
+        #     x = torch.mean(x, dim=0)
+        #     y_hat = self.classifier(x)
+        #
+        # if y != None:
+        #     loss = self.loss(y_hat, y)
+        #     return y_hat, loss
+        # return y_hat
+
 class RGBD_Transformer(BaseModel):
     def __init__(self, config, N_classes):
         """
@@ -577,7 +662,8 @@ class RGBD_SK_Transformer(BaseModel):
             N_classes (int): number of classes
         """
         super().__init__()
-        self.sk_encoder = STGCN(config, num_class=N_classes)
+        #self.sk_encoder = STGCN(config, num_class=N_classes)
+        self.sk_encoder = SkTR(planes=128, N_classes=N_classes)
         config = OmegaConf.load(os.path.join(config.cwd, 'models/multimodal/model.yml'))['model']
         self.rgb_encoder = ir_csn_152_(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                                                   num_classes=N_classes, use_tpn=False)
@@ -588,12 +674,12 @@ class RGBD_SK_Transformer(BaseModel):
         self.rgb_encoder.use_tr = False
         self.depth_encoder.use_tr = False
 
-        self.reduce = nn.Conv1d(2048 * 2 + 1024, 2048, kernel_size=1, bias=False)
+        self.reduce = nn.Conv1d(4224, 2048, kernel_size=1, bias=False)
         planes = 2048
         max_tokens = 8+1
         self.pe = PositionalEncoding1D(dim = planes,max_tokens=max_tokens)
 
-        self.transformer_encoder = TransformerEncoder(dim=planes, blocks=2, heads=8, dim_head=64, dim_linear_block=planes, dropout=0.4)
+        self.transformer_encoder = TransformerEncoder(dim=planes, blocks=2, heads=8, dim_head=64, dim_linear_block=planes, dropout=0.1)
         self.use_cls_token = True
         if self.use_cls_token:
             self.cls_token = nn.Parameter(torch.randn(1, planes ))
@@ -602,8 +688,8 @@ class RGBD_SK_Transformer(BaseModel):
                 nn.Linear(planes, N_classes)
             )
 
-
-        self.crit = LabelSmoothingCrossEntropy()
+        self.crit = nn.CrossEntropyLoss()
+        #self.crit = LabelSmoothingCrossEntropy()
         self.device0 = torch.device('cuda:0')
         self.device1 = torch.device('cuda:1')
 
@@ -616,7 +702,7 @@ class RGBD_SK_Transformer(BaseModel):
         features_rgb = self.rgb_encoder(rgb_tensor)
 
         features_depth = self.depth_encoder(depth_tensor)
-        #print(f"RGB {features_rgb.shape} D {features_depth.shape} sk {features_sk.shape}")
+       # print(f"RGB {features_rgb.shape} D {features_depth.shape} sk {features_sk.shape}")
         concatenated = torch.cat((features_rgb, features_depth, features_sk), dim=1)
         b = concatenated.shape[0]
         x = self.reduce(concatenated)#

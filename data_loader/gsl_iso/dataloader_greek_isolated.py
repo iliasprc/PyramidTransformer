@@ -196,8 +196,6 @@ def read_gsl_isolated(csv_path):
 
 
 
-
-
 def read_bounding_box(path):
     bbox = {}
     data = open(path, 'r').read().splitlines()

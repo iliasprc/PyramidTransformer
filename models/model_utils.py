@@ -177,8 +177,8 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     # # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
     pretrained_dictnew = {}
     for k, v in pretrained_dict.items():
-        if 'module.' in k:
-            k = k[7:]
+        if 'cnn.' in k:
+            k = k[4:]
         pretrained_dictnew[k] = v
     # # # for k, v in pretrained_dict.items():
     # # #     k = k.strip('model.')

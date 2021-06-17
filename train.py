@@ -63,7 +63,7 @@ def main():
     shutil.copy(os.path.join(config.cwd, config_file), cpkt_fol_name)
 
     # log.info("date and time =", dt_string)
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'#str(config.gpu)
     log.info(f'pyTorch VERSION:{torch.__version__}', )
     log.info(f'CUDA VERSION')
 
@@ -93,9 +93,10 @@ def main():
     if (config.load):
         #model.replace_logits(2000)
         model.fc = torch.nn.Linear(2048,226)
+        model.replace_logits(311)
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-
-        model.fc = torch.nn.Linear(1024,226)
+        model.replace_logits(len(classes))
+        model.fc = torch.nn.Linear(1024,len(classes))
 
     else:
         pth_file = None

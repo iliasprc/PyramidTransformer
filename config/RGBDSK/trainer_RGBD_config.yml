@@ -1,21 +1,21 @@
 trainer:
   cwd: /home/papastrat/PycharmProjects/PyramidTransformer # working directory
   logger: SLR_challenge # logger name
-  epochs: 30 # number of training epochs
+  epochs: 15 # number of training epochs
   seed: 1234 # randomness seed
   cuda: True # use nvidia gpu
   gpu: 0,1 # id of gpu
   save: True # save checkpoint
   load: True # load pretrained checkpoint
-  gradient_accumulation: 16 # gradient accumulation steps
+  gradient_accumulation: 2 # gradient accumulation steps
   rgb_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_IR_CSN_152/dataset_AUTSL/date_04_03_2021_10.03.02/best_model_epoch_19.pth
   depth_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/trained/dept_pyramid_transformer_VAL_90.52/date_27_02_2021_23.12.18/best_model.pth
   log_interval: 1000 # print statistics every log_interval
   model:
     name: RGBDSK_Transformer # model name
     optimizer: # optimizer configuration
-      type: Adam # optimizer type
-      lr: 1e-3 # learning rate
+      type: SGD # optimizer type
+      lr: 0.5e-2 # learning rate
       weight_decay: 0.00001 # weight decay
     scheduler: # learning rate scheduler
       type: ReduceLRonPlateau # type of scheduler

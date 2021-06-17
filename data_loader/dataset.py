@@ -125,6 +125,22 @@ def islr_datasets(config):
         # test_set = GSL_ISO(args, 'augment', classes, dim)
         # test_generator = data.DataLoader(test_set, **test_params)
         return training_generator, val_generator, None, classes
+    elif config.dataset.name == 'GSL_ISO_SI':
+
+        print("RUN ON GREEK SI PROT ISOLATED")
+        train_prefix = "train"
+        val_prefix = "val"
+        indices, classes, id2w = read_classes_file(os.path.join(config.cwd, 'data_loader/gsl_iso/files/iso_classes.csv'))
+        print('Number of Classes {} \n \n  '.format(len(classes)))
+
+        from data_loader.gsl_iso.dataloader_gsl_si_isolated import GSL_SI
+        training_set = GSL_SI(config,  train_prefix, classes)
+        training_generator = data.DataLoader(training_set, **train_params)
+
+        val_set = GSL_SI(config,  'val', classes)
+        val_generator = data.DataLoader(val_set, **val_params )
+
+        return training_generator, val_generator, None, training_set.classes
     elif config.dataset.name == 'MULTI_ISLR':
         train_prefix = "train"
         val_prefix = "val"

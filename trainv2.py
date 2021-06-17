@@ -25,7 +25,7 @@ from trainer.trainer import Trainer
 from utils.logger import Logger
 from utils.util import arguments, getopts
 
-config_file = 'config/ISLR/trainer_config2.yml'
+config_file = 'config/ISLR/trainer_config.yml'
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
         if 'c' in myargs:
             config_file = myargs['c']
     else:
-        config_file = 'config/ISLR/trainer_config2.yml'
+        config_file = 'config/ISLR/trainer_config.yml'
 
     config = OmegaConf.load(os.path.join(cwd, config_file))['trainer']
 
@@ -63,7 +63,7 @@ def main():
     shutil.copy(os.path.join(config.cwd, config_file), cpkt_fol_name)
 
     # log.info("date and time =", dt_string)
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(config.gpu)
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'#str(config.gpu)
     log.info(f'pyTorch VERSION:{torch.__version__}', )
     log.info(f'CUDA VERSION')
 
@@ -83,7 +83,7 @@ def main():
 
     use_cuda = torch.cuda.is_available()
 
-    device = torch.device("cuda:0" if use_cuda else "cpu")
+    device = torch.device("cuda" if use_cuda else "cpu")
     log.info(f'device: {device}')
 
 
@@ -91,20 +91,22 @@ def main():
 
 
     if (config.load):
-        model.replace_logits(2042)
-
-        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
-
+        #model.replace_logits(2000)
+        #model.fc = torch.nn.Linear(2048,226)
         model.replace_logits(311)
+        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
+        model.replace_logits(len(classes))
+        #model.fc = torch.nn.Linear(1024,len(classes))
 
     else:
         pth_file = None
-    log.info(f'{model}')
+    #log.info(f'{model}')
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
 
             model = torch.nn.DataParallel(model)
+    #model.freeze_param()
     model.to(device)
 
 
