@@ -55,28 +55,40 @@ test_filepath = "data_loader/gsl/files/gsl_split_SI_test.csv"
 
 def read_gsl_si_isolated(csv_path):
     trainpaths, train_labels = [], []
+    train_glosses = []
+    val_glosses = []
     valpaths, val_labels = [], []
     classes = []
+    gloss_classes = ['blank']
+    id2w = {'blank':0}
+    c = 0
     data = open(csv_path, 'r').read().splitlines()
     for item in data:
-        if (len(item.split('|')) < 3):
+        if (len(item.split(',')) < 3):
             print("\n {} {} {} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n".format(item, path, csv_path))
-        path, prot, gloss = item.split('|')
+        path, prot, gloss = item.split(',')
         prot = prot.strip()
+        gloss = gloss.strip()
+        for g in gloss.split(' '):
+            if g not in gloss_classes:
+                gloss_classes.append(g)
+                c+=1
+                id2w[g] = c
         if prot not in classes:
             classes.append(prot)
         if 'signer3' not in path:
             trainpaths.append(path)
-
+            train_glosses.append(gloss)
             train_labels.append(prot)
         else:
             valpaths.append(path)
-
+            val_glosses.append(gloss)
             val_labels.append(prot)
     classes = sorted(classes)
     # for i in classes:
-    #     print(i)
-    return trainpaths, train_labels, valpaths, val_labels, classes
+    #      print(i)
+    w2id = {v: k for k, v in id2w.items()}
+    return trainpaths, train_labels, train_glosses,valpaths, val_labels, val_glosses,classes,gloss_classes,w2id
 
 
 class GSL_SI(Base_dataset):
@@ -103,16 +115,18 @@ class GSL_SI(Base_dataset):
         self.augmentation = self.config.dataset[self.mode]['augmentation']
         self.return_context = False
 
-        trainpaths, train_labels, valpaths, val_labels, classes = read_gsl_si_isolated(
-            os.path.join(config.cwd, 'data_loader/gsl/files/continuous_protaseis_glosses.csv'))
+        trainpaths, train_labels, train_glosses, valpaths, val_labels, val_glosses, classes,gloss_classes,id2w= read_gsl_si_isolated(
+            os.path.join(config.cwd, 'data_loader/gsl/files/continuous_protaseis_glossesv2.csv'))
+        self.id2w = id2w
         self.bbox = read_bounding_box(os.path.join(config.cwd, 'data_loader/gsl/files/bbox_for_gsl_continuous.txt'))
         self.classes = classes
-        print('NUMBER OF CLASSES ',len(self.classes) )
+        self.gloss_classes = gloss_classes
+        print(f'NUMBER OF CLASSES PROT {len(self.classes)}   GLOSS   {len(gloss_classes)}' )
         if self.mode == train_prefix:
-            self.list_IDs, self.list_glosses = trainpaths, train_labels
+            self.list_IDs, self.list_sent,self.list_glosses = trainpaths, train_labels,train_glosses
 
         elif self.mode == val_prefix:
-            self.list_IDs, self.list_glosses = valpaths, val_labels
+            self.list_IDs, self.list_sent,self.list_glosses  = valpaths, val_labels,val_glosses
 
         print(f"{len(self.list_IDs)} {self.mode} instances")
 
@@ -135,7 +149,7 @@ class GSL_SI(Base_dataset):
         # print(folder_path)
 
         y = multi_label_to_index(classes=self.classes, target_labels=self.list_glosses[index])
-
+        y = multi_label_to_index(classes=self.classes, target_labels=self.list_glosses[index])
         x = torch.FloatTensor(np.load(folder_path + '.npy')).squeeze(0)
 
         return x, y
@@ -144,13 +158,15 @@ class GSL_SI(Base_dataset):
 
         x = self.load_video_sequence(path=self.list_IDs[index],
                                      img_type='jpg')
-        y = class2indextensor(classes=self.classes, target_label=self.list_glosses[index])
-
-        return x, y
+        y = class2indextensor(classes=self.classes, target_label=self.list_sent[index])
+        y_g = multi_label_to_index(classes=self.gloss_classes, target_labels=self.list_glosses[index])
+        return x,y, y_g
 
     def load_video_sequence(self, path,
                             img_type='png'):
-
+        if (self.augmentation):
+            if random.uniform(0, 1) > 0.5:
+                path = path.replace('GSL_NEW','GSL_continuous')
         images = sorted(glob.glob(os.path.join(self.data_path, path, ) + '/*' + img_type))
 
         h_flip = False

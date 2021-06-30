@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from einops import rearrange
 from models.vmz.layers import Bottleneck, Conv3DDepthwise, BasicStem, BasicStem_Pool
 from models.cslr.layers import PositionalEncoding1D
-from utils.ctc_loss import CTC_Loss
+from utils.ctcl import CTCL
 model_urls = {
     "r2plus1d_34_8_ig65m": "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch-9bae36ae.pth",
     # noqa: E501
@@ -65,7 +65,7 @@ class CSLRVideoResNet(nn.Module):
         encoder_layer = nn.TransformerEncoderLayer(d_model=2048, dim_feedforward=4096, nhead=8, dropout=0.2)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1)
         # init weights
-        self.loss = CTC_Loss()
+        self.loss = CTCL()
         self._initialize_weights()
         self.window_size = 16
         self.stride = 8

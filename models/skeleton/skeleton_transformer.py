@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from einops import repeat,rearrange
 import torch.nn.functional as F
-from utils.ctc_loss import CTC_Loss
+from utils.ctcl import CTCL
 def expand_to_batch(tensor, desired_size):
     tile = desired_size // tensor.shape[0]
     return repeat(tensor, 'b ... -> (b tile) ...', tile=tile)
@@ -46,7 +46,7 @@ class SkeletonTR(nn.Module):
         if mode == 'isolated':
             self.loss = nn.CrossEntropyLoss()
         else:
-            self.loss = CTC_Loss()
+            self.loss = CTCL()
         if self.use_cls_token:
             self.cls_token = nn.Parameter(torch.randn(1, planes))
             self.to_out = nn.Sequential(
@@ -201,7 +201,7 @@ class SK_TCL(nn.Module):
         encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=2*planes, nhead=8, dropout=0.1)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
         self.fc = nn.Linear(planes,N_classes)
-        self.loss = CTC_Loss()
+        self.loss = CTCL()
 
     def forward(self,x,y=None):
         x1 = x.unfold(1, self.window_size, self.stride).squeeze(0)
@@ -255,7 +255,7 @@ class CSLRSkeletonTR(nn.Module):
         self.use_cls_token = True
         self.window_size = 16
         self.stride = 8
-        self.loss = CTC_Loss()
+        self.loss = CTCL()
         if self.use_cls_token:
             self.cls_token = nn.Parameter(torch.randn(1, planes))
             self.to_out = nn.Sequential(

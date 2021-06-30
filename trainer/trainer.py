@@ -8,14 +8,14 @@ from models.model_utils import save_checkpoint_slr
 from utils.util import MetricTracker
 from utils.util import write_csv, check_dir
 
-
+from utils.metrics import word_error_rate_generic
 class Trainer(BaseTrainer):
     """
     Trainer class
     """
 
     def __init__(self, config, model, optimizer, data_loader, writer, checkpoint_dir, logger,
-                 valid_data_loader=None, test_data_loader=None, lr_scheduler=None, metric_ftns=None):
+                 valid_data_loader=None, test_data_loader=None, lr_scheduler=None, metric_ftns=None,id2w=None):
         super(Trainer, self).__init__(config, data_loader, writer, checkpoint_dir, logger,
                                       valid_data_loader=valid_data_loader,
                                       test_data_loader=test_data_loader, metric_ftns=metric_ftns)
@@ -27,7 +27,7 @@ class Trainer(BaseTrainer):
             self.device = torch.device("cpu")
         self.start_epoch = 1
         self.train_data_loader = data_loader
-
+        self.id2w = id2w
         self.len_epoch = self.config.dataloader.train.batch_size * len(self.train_data_loader)
         self.epochs = self.config.epochs
         self.valid_data_loader = valid_data_loader
@@ -45,9 +45,9 @@ class Trainer(BaseTrainer):
         self.checkpoint_dir = checkpoint_dir
         self.gradient_accumulation = config.gradient_accumulation
         self.writer = writer
-        self.metric_ftns = ['loss', 'acc']
+        self.metric_ftns = ['loss', 'acc','wer']
         self.train_metrics = MetricTracker(*[m for m in self.metric_ftns], writer=self.writer, mode='train')
-        self.metric_ftns = ['loss', 'acc']
+        self.metric_ftns = ['loss', 'acc','wer']
         self.valid_metrics = MetricTracker(*[m for m in self.metric_ftns], writer=self.writer, mode='validation')
         self.logger = logger
 
@@ -63,20 +63,20 @@ class Trainer(BaseTrainer):
 
         self.train_metrics.reset()
         gradient_accumulation = self.gradient_accumulation
-        for batch_idx, (data, target) in enumerate(self.train_data_loader):
+        for batch_idx, (data, target,y_g) in enumerate(self.train_data_loader):
 
             data = data.to(self.device)
-
+            y_g = y_g.to(self.device)
             target = target.long().to(self.device)
 
-            output, loss = self.model(data, target)
+            output, y_gloss,loss = self.model(data, target,y_g)
             loss = loss.mean()
 
             (loss / gradient_accumulation).backward()
             if (batch_idx % gradient_accumulation == 0):
                 self.optimizer.step()  # Now we can do an optimizer step
                 self.optimizer.zero_grad()  # Reset gradients tensors
-
+            temp_wer, s, C, S, I, D = word_error_rate_generic(y_gloss, y_g, self.id2w)
             prediction = torch.max(output, 1)
 
             acc = np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()) / target.size(0)
@@ -86,6 +86,7 @@ class Trainer(BaseTrainer):
             #         'loss': loss.item(), 'acc': acc,
             #     }, writer_step=writer_step)
             self.train_metrics.update(key='loss', value=loss.item(), n=1, writer_step=writer_step)
+            self.train_metrics.update('wer',value=100.0 * temp_wer, n=1, writer_step=writer_step)
             self.train_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.squeeze(-1).cpu().numpy()),
                                       n=target.size(0), writer_step=writer_step)
 
@@ -109,21 +110,21 @@ class Trainer(BaseTrainer):
         self.valid_metrics.reset()
 
         with torch.no_grad():
-            for batch_idx, (data, target) in enumerate(loader):
+            for batch_idx, (data, target,y_g) in enumerate(loader):
                 data = data.to(self.device)
 
                 target = target.long().to(self.device)
-
-                output, loss = self.model(data, target)
+                y_g = y_g.to(self.device)
+                output, y_gloss, loss = self.model(data, target, y_g)
                 loss = loss.mean()
                 writer_step = (epoch - 1) * len(loader) + batch_idx
-
+                temp_wer, s, C, S, I, D = word_error_rate_generic(y_gloss, y_g, self.id2w)
                 prediction = torch.max(output, 1)
                 acc = np.sum(prediction[1].cpu().numpy() == target.squeeze(-1).cpu().numpy()) / target.size(0)
 
                 # self.valid_metrics.update_all_metrics(
                 #     {'loss': loss.item(), 'acc': acc}, writer_step=writer_step)
-
+                self.valid_metrics.update('wer',value=100.0 * temp_wer, n=1, writer_step=writer_step)
                 self.valid_metrics.update(key='loss', value=loss.item(), n=1, writer_step=writer_step)
                 self.valid_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.squeeze(-1).cpu().numpy()),
                                           n=target.size(0), writer_step=writer_step)

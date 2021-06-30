@@ -14,7 +14,7 @@ trainer:
     name: I3D # model name SkeletonTR
     optimizer: # optimizer configuration
       type: Adam # optimizer type
-      lr: 1e-4 # learning rate
+      lr: 0.5e-4 # learning rate
       weight_decay: 0.000001 # weight decay
     scheduler: # learning rate scheduler
       type: ReduceLRonPlateau # type of scheduler

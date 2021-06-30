@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from models.cslr.layers import BasicStem, BasicStem_Pool, SpatialModulation, Conv3DDepthwise, Bottleneck,ECA_3D
-from utils.ctc_loss import CTC_Loss
+from utils.ctcl import CTCL
 from einops import rearrange
 
 
@@ -79,7 +79,7 @@ class CSLR_PyramidTransformerResNet(nn.Module):
         self.stride = 8
         # init weights
         self._initialize_weights()
-        self.loss = CTC_Loss()
+        self.loss = CTCL()
         if zero_init_residual:
             for m in self.modules():
                 if isinstance(m, Bottleneck):

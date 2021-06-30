@@ -15,7 +15,7 @@ from models.vmz.layers1d import Conv1DDepthwise, BasicStem_Pool1D, Bottleneck1D
 from models.vmz.resnet import Bottleneck
 from models.gcn.model.decouple_gcn_attn import STGCN
 from models.transformers.transformer import TransformerEncoder
-from utils.ctc_loss import CTC_Loss
+from utils.ctcl import CTCL
 from einops import rearrange
 class MaxPool3dSamePadding(nn.MaxPool3d):
 
@@ -503,7 +503,7 @@ class SLR_I3D(nn.Module):
         self.stride = 10
         # print()
 
-        self.loss = CTC_Loss()
+        self.loss = CTCL()
     def forward(self, x,y=None):
         # print('dfsdfsdafgdsafdsgfsdg')
         if (False ):# self.mode == 'isolated'):

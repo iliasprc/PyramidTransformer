@@ -70,10 +70,11 @@ def CSLR_video_encoder(config, N_classes):
 
 def ISLR_video_encoder(config, N_classes):
     from models.cslr.i3d import InceptionI3d,SLR_I3D
+    from models.cslr.i3d_fs import InceptionI3d_Sentence
     if config.model.name == 'IR_CSN_152':
         return ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
     elif config.model.name == 'I3D':
-        return InceptionI3d(num_classes=N_classes)
+        return InceptionI3d_Sentence(num_classes=N_classes)
     elif config.model.name =='GoogLeNet_TConvs':
         return GoogLeNet_TConvs(N_classes=N_classes)
     elif config.model.name == 'SkeletonTR':

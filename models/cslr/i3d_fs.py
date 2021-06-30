@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.functional as F
 from einops import repeat, rearrange
+from utils.ctcl import CTCL
 from omegaconf import OmegaConf
 from utils.loss import LabelSmoothingCrossEntropy
 from base.base_model import BaseModel
@@ -15,7 +16,7 @@ from models.vmz.layers1d import Conv1DDepthwise, BasicStem_Pool1D, Bottleneck1D
 from models.vmz.resnet import Bottleneck
 from models.gcn.model.decouple_gcn_attn import STGCN
 from models.transformers.transformer import TransformerEncoder
-from utils.ctc_loss import CTC_Loss
+
 from einops import rearrange
 class MaxPool3dSamePadding(nn.MaxPool3d):
 
@@ -633,6 +634,7 @@ class InceptionI3d_Sentence(nn.Module):
                              use_bias=True,
                              name='logits')
         self.loss =  nn.CrossEntropyLoss()
+        self.ctc_loss = CTCL()
 
         self.build()
         self.use_tr = False
@@ -657,9 +659,13 @@ class InceptionI3d_Sentence(nn.Module):
                 num_layers=2,
                 dropout=0.5,
                 bidirectional=True,batch_first=True)
-            self.fc1 = nn.Sequential(nn.Linear(1024,1024),nn.LeakyReLU(0.2))
-            self.fc2 = nn.Sequential(nn.Linear(1024,512),nn.LeakyReLU(0.2),nn.Linear(512,256),nn.LeakyReLU(0.2),nn.Dropout(0.1))
-            self.fc = nn.Linear(256,self._num_classes)
+            # self.fc1 = nn.Sequential(nn.Linear(1024,1024),nn.LeakyReLU(0.2))
+            # self.fc2 = nn.Sequential(nn.Linear(1024,512),nn.LeakyReLU(0.2),nn.Linear(512,256),nn.LeakyReLU(0.2),nn.Dropout(0.1))
+            # self.fc = nn.Linear(256,self._num_classes)
+            # self.fc1 = nn.Sequential(nn.Linear(1024,1024),nn.LeakyReLU(0.2))
+            # self.fc2 = nn.Sequential(nn.Linear(1024,512),nn.LeakyReLU(0.2),nn.Linear(512,256),nn.LeakyReLU(0.2),nn.Dropout(0.1))
+            self.fc_gloss = nn.Linear(1024,311)
+            self.fc_sentence = nn.Linear(1024, 228)
     def replace_logits(self, num_classes):
         self._num_classes = num_classes
         self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
@@ -674,14 +680,14 @@ class InceptionI3d_Sentence(nn.Module):
         for k in self.end_points.keys():
             self.add_module(k, self.end_points[k])
 
-    def forward(self, x , y=None):
+    def forward(self, x , y=None,y_g=None):
 
 
-
-        for end_point in self.VALID_ENDPOINTS:
-            if end_point in self.end_points:
-                # print(x.size())
-                x = self._modules[end_point](x)  # use _modules to work with dataparallel
+        with torch.no_grad():
+            for end_point in self.VALID_ENDPOINTS:
+                if end_point in self.end_points:
+                    # print(x.size())
+                    x = self._modules[end_point](x)  # use _modules to work with dataparallel
 
         if self.use_tr:
             x = self.avg_pool(self.dropout(x)).squeeze(-1).squeeze(-1)
@@ -697,17 +703,21 @@ class InceptionI3d_Sentence(nn.Module):
 
             y_hat = self.classifier(x[:, 0, :])
         else:
+            #with torch.no_grad():
             x = self.dropout(self.avg_pool(x)).squeeze(-1).squeeze(-1)
             x = rearrange(x, 'b c t -> b t c')
             r_out, (h_n, h_c) = self.rnn(x)
+            y_gloss = rearrange(self.fc_gloss(r_out), 'b t c -> t b c')
             x = r_out.mean(dim=1)
-            x1 = self.fc2(x+ self.fc1(x))
+            y_hat = self.fc_sentence(x)
 
-            y_hat = self.fc(x1)
+           # y_hat = self.fc(x1)
+        #print(y_g.shape,y_gloss.shape)
 
         if y != None:
-            loss_ctc = self.loss(y_hat, y.squeeze(-1))
-            return y_hat, loss_ctc
+            loss_ = self.loss(y_hat, y.squeeze(-1))
+            loss_ctc = self.ctc_loss(y_gloss,y_g)
+            return y_hat,y_gloss, loss_+loss_ctc
         return y_hat
         return y_hat
 
@@ -722,8 +732,4 @@ class InceptionI3d_Sentence(nn.Module):
 
             count += 1
 
-            if 'logits' in  name :
-                print(name)
-                param.requires_grad = True
-            else:
-                param.requires_grad=False
+

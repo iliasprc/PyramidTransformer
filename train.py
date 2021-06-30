@@ -77,7 +77,7 @@ def main():
         torch.cuda.manual_seed(config.seed)
     cudnn.benchmark = True
     cudnn.deterministic = True
-    training_generator, val_generator, test_generator, classes = islr_datasets(config)
+    training_generator, val_generator, test_generator, classes ,id2w= islr_datasets(config)
 
     model = ISLR_video_encoder(config, len(classes))
 
@@ -92,15 +92,17 @@ def main():
 
     if (config.load):
         #model.replace_logits(2000)
-        model.fc = torch.nn.Linear(2048,226)
+        #model.fc = torch.nn.Linear(256,250)
         model.replace_logits(311)
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-        model.replace_logits(len(classes))
-        model.fc = torch.nn.Linear(1024,len(classes))
+        #model.replace_logits(len(classes))
+        #model.fc = torch.nn.Linear(1024,len(classes))
+        model.fc = torch.nn.Linear(256, len(classes))
 
     else:
         pth_file = None
     log.info(f'{model}')
+    model.freeze_param()
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
@@ -116,7 +118,7 @@ def main():
                       data_loader=training_generator, writer=writer, logger=log,
                       valid_data_loader=val_generator, test_data_loader=test_generator,
                       lr_scheduler=scheduler,
-                      checkpoint_dir=cpkt_fol_name)
+                      checkpoint_dir=cpkt_fol_name,id2w=id2w)
 
 
 

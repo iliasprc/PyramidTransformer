@@ -92,21 +92,22 @@ def main():
 
     if (config.load):
         #model.replace_logits(2000)
-        #model.fc = torch.nn.Linear(2048,226)
+        #model.fc = torch.nn.Linear(256,250)
         model.replace_logits(311)
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-        model.replace_logits(len(classes))
+        #model.replace_logits(len(classes))
         #model.fc = torch.nn.Linear(1024,len(classes))
+        model.fc = torch.nn.Linear(256, len(classes))
 
     else:
         pth_file = None
-    #log.info(f'{model}')
+    log.info(f'{model}')
+    model.freeze_param()
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
 
             model = torch.nn.DataParallel(model)
-    #model.freeze_param()
     model.to(device)
 
 

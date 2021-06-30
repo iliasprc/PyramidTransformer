@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils.ctc_loss import CTC_Loss
+from utils.ctcl import CTCL
 from torchvision import models
 from einops import rearrange
 
@@ -64,7 +64,7 @@ class GoogLeNet_TConvs(nn.Module):
         self.mode = mode
 
         if (self.mode == 'continuous'):
-            self.loss = CTC_Loss()
+            self.loss = CTCL()
             # for end-to-end
             self.padding = 1
         else:

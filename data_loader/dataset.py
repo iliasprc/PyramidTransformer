@@ -140,7 +140,7 @@ def islr_datasets(config):
         val_set = GSL_SI(config,  'val', classes)
         val_generator = data.DataLoader(val_set, **val_params )
 
-        return training_generator, val_generator, None, training_set.classes
+        return training_generator, val_generator, None, training_set.classes,training_set.id2w
     elif config.dataset.name == 'MULTI_ISLR':
         train_prefix = "train"
         val_prefix = "val"

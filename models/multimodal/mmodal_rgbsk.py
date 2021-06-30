@@ -11,7 +11,7 @@ from einops import repeat
 from base.base_model import BaseModel
 from models.cslr.i3d import InceptionModule, MaxPool3dSamePadding, Unit3D
 from models.skeleton.skeleton_transformer import PositionalEncoding1D
-from utils.ctc_loss import CTC_Loss
+from utils.ctcl import CTCL
 
 
 
@@ -40,7 +40,7 @@ class SK_TCL(nn.Module):
         encoder_layer = nn.TransformerEncoderLayer(d_model=planes, dim_feedforward=2*planes, nhead=8, dropout=0.1)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
         self.fc = nn.Linear(planes,N_classes)
-        self.loss = CTC_Loss()
+        self.loss = CTCL()
 
     def forward(self,x,y=None):
         x1 = x.unfold(1, self.window_size, self.stride).squeeze(0)
@@ -294,7 +294,7 @@ class InceptionI3d(nn.Module):
         encoder_layer = nn.TransformerEncoderLayer(d_model=1024, dim_feedforward=2048, nhead=8, dropout=0.2)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1)
         self.fc = nn.Linear(1024,num_classes)
-        self.loss= CTC_Loss()
+        self.loss= CTCL()
 
 
         self.build()
@@ -401,7 +401,7 @@ class RGBSK_model(nn.Module):
             nn.Linear(channels, N_classes)
         )
 
-        self.loss = CTC_Loss()
+        self.loss = CTCL()
     def forward(self, vid,skeleton,y=None):
 
         with torch.no_grad():

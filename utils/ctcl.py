@@ -155,9 +155,9 @@ class Dist(nn.Module):
             return 1.0 - self.distance(x1, x2)
 
 
-class CTC_Loss(nn.Module):
+class CTCL(nn.Module):
     def __init__(self, crit='normal', average=True, alpha=0.99, gamma=2.0, beta=0.1, return_ctc_cost=False):
-        super(CTC_Loss, self).__init__()
+        super(CTCL, self).__init__()
 
         self.alpha = alpha
         self.gamma = gamma
