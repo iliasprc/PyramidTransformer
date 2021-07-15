@@ -10,7 +10,7 @@ from models.vmz.eca_ir_csn_152 import eca_ir_csn_152
 from models.vmz.ir_csn_152 import ir_csn_152
 from models.vmz.pyramid_transformer import ir_csn_152_transformer,ir_csn_152_timesformer
 from models.skeleton.skeleton_transformer import SkeletonTR,CSLRSkeletonTR,SK_TCL
-from models.cslr.googlenet_tcl import GoogLeNet_TConvs
+from models.cslr.googlenet_tcl import GoogLeNet_TConvs,ISL_cnn
 from models.gcn.model.decouple_gcn_attn import STGCN,STGCN_Transformer
 
 model_urls = {
@@ -77,6 +77,8 @@ def ISLR_video_encoder(config, N_classes):
         return InceptionI3d_Sentence(num_classes=N_classes)
     elif config.model.name =='GoogLeNet_TConvs':
         return GoogLeNet_TConvs(N_classes=N_classes)
+    elif config.model.name == 'ISL_cnn':
+        return ISL_cnn(N_classes=N_classes)
     elif config.model.name == 'SkeletonTR':
         return SkeletonTR(N_classes = N_classes)
     elif config.model.name == 'STGCN':

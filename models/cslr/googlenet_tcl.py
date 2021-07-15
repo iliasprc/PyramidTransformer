@@ -1,19 +1,17 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from utils.ctcl import CTCL
-from torchvision import models
-from einops import rearrange
-
-
 import torch
 import torch.nn as nn
-from einops import repeat,rearrange
 import torch.nn.functional as F
+from einops import repeat, rearrange
+from torchvision import models
+from models.transformers.transformer import TransformerEncoder
+from utils.ctcl import CTCL
+
 
 def expand_to_batch(tensor, desired_size):
     tile = desired_size // tensor.shape[0]
     return repeat(tensor, 'b ... -> (b tile) ...', tile=tile)
+
 
 class PositionalEncoding1D(nn.Module):
 
@@ -26,13 +24,14 @@ class PositionalEncoding1D(nn.Module):
         div_term = torch.exp(torch.arange(0, dim, 2).float() * (-torch.log(torch.Tensor([10000.0])) / dim))
         pe[..., 0::2] = torch.sin(position * div_term)
         pe[..., 1::2] = torch.cos(position * div_term)
-        #pe = pe.unsqueeze(0).transpose(0, 1)
+        # pe = pe.unsqueeze(0).transpose(0, 1)
         self.pe = pe.cuda()
 
     def forward(self, x):
         batch, seq_tokens, _ = x.size()
-        x = x + expand_to_batch( self.pe[:, :seq_tokens, :], desired_size=batch)
+        x = x + expand_to_batch(self.pe[:, :seq_tokens, :], desired_size=batch)
         return self.dropout(x)
+
 
 class Identity(nn.Module):
     def __init__(self):
@@ -88,7 +87,7 @@ class GoogLeNet_TConvs(nn.Module):
         cslr = True
         if cslr:
             self.pe = PositionalEncoding1D(1024)
-            encoder_layer = nn.TransformerEncoderLayer(d_model=1024, dim_feedforward=2*1024, nhead=8, dropout=0.3)
+            encoder_layer = nn.TransformerEncoderLayer(d_model=1024, dim_feedforward=2 * 1024, nhead=8, dropout=0.3)
             self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1)
             self.fc = nn.Linear(1024, self.n_cl)
         else:
@@ -107,18 +106,18 @@ class GoogLeNet_TConvs(nn.Module):
         # if self.mode == 'continuous':
         #     self.init_param()
 
-    def forward(self, x,y=None):
+    def forward(self, x, y=None):
         # select continous or isolated
         if (self.mode == 'continuous'):
-            return self.continuous_forwardtr(x,y)
+            return self.continuous_forwardtr(x, y)
         elif (self.mode == 'isolated'):
-            return self.isolated_forward(x,y)
+            return self.isolated_forward(x, y)
 
         return None
 
-    def continuous_forward(self, x,y):
+    def continuous_forward(self, x, y):
         with torch.no_grad():
-            batch_size,  C,timesteps, H, W = x.size()
+            batch_size, C, timesteps, H, W = x.size()
             c_in = x.view(batch_size * timesteps, C, H, W)
             c_outputs = self.cnn(c_in)
             c_out = c_outputs.contiguous().view(batch_size, timesteps, -1)
@@ -132,15 +131,14 @@ class GoogLeNet_TConvs(nn.Module):
         rnn_out, (h_n, h_c) = self.rnn(rnn_input)
         fc_input = rnn_out.squeeze(1)
         y_hat = self.fc(fc_input).unsqueeze(1)
-        if y!=None:
-            loss_ctc = self.loss(y_hat,y)
-            return y_hat,loss_ctc
+        if y != None:
+            loss_ctc = self.loss(y_hat, y)
+            return y_hat, loss_ctc
         return y_hat
 
-
-    def continuous_forwardtr(self, x,y):
+    def continuous_forwardtr(self, x, y):
         with torch.no_grad():
-            batch_size,  C,timesteps, H, W = x.size()
+            batch_size, C, timesteps, H, W = x.size()
             c_in = x.view(batch_size * timesteps, C, H, W)
             c_outputs = self.cnn(c_in)
             c_out = c_outputs.contiguous().view(batch_size, timesteps, -1)
@@ -150,16 +148,16 @@ class GoogLeNet_TConvs(nn.Module):
         temp = self.temporal(temp_input)
         # temporal layers output size batch_size x dim_feats x timesteps
         # rnn input must be timesteps x batch_size x dim_feats
-        rnn_input = rearrange(temp,'b c t -> b t c')
+        rnn_input = rearrange(temp, 'b c t -> b t c')
 
         x = self.pe(rnn_input)
         x = rearrange(x, 'b t d -> t b d')
         x = self.transformer_encoder(x)
 
         y_hat = self.fc(x)
-        if y!=None:
-            loss_ctc = self.loss(y_hat,y)
-            return y_hat,loss_ctc
+        if y != None:
+            loss_ctc = self.loss(y_hat, y)
+            return y_hat, loss_ctc
         return y_hat
 
     def __inference__(self, x):
@@ -187,9 +185,9 @@ class GoogLeNet_TConvs(nn.Module):
 
         return r_out
 
-    def isolated_forward(self, x,y=None):
+    def isolated_forward(self, x, y=None):
 
-        batch_size, C, timesteps,H, W = x.size()
+        batch_size, C, timesteps, H, W = x.size()
         c_in = x.view(batch_size * timesteps, C, H, W)
         c_outputs = self.cnn(c_in)
         c_out = c_outputs.contiguous().view(batch_size, timesteps, -1)
@@ -201,8 +199,8 @@ class GoogLeNet_TConvs(nn.Module):
         # last linear input must be timesteps x batch_size x dim_feats
         fc_input = temp.permute(2, 0, 1).squeeze(0)
         y_hat = self.fc(fc_input)
-        #print(y_hat.shape)
-        if y!=None:
+        print(y_hat.shape)
+        if y != None:
             loss = F.cross_entropy(y_hat, y.squeeze(-1))
             return y_hat, loss
         return y_hat
@@ -247,6 +245,233 @@ class GoogLeNet_TConvs(nn.Module):
             self.cnn.classifier = Identity()
             self.dim_feats = 1280
 
+
+
+
+
+
+
+class ISL_cnn(nn.Module):
+    def __init__(self, hidden_size=512, n_layers=2, dropt=0.5, bi=True, N_classes=1232, mode='isolated',
+                 backbone='xcit_tiny_12_p16_224'):
+        """
+
+        :param hidden_size: Hidden size of BLSTM
+        :param n_layers: Number of layers of BLSTM
+        :param dropt: Dropout ratio of BLSTM
+        :param bi: Bidirectional
+        :param N_classes:
+        :param mode:
+        :param backbone:
+        """
+        super(ISL_cnn, self).__init__()
+
+        self.name = backbone
+        self.hidden_size = hidden_size
+        self.num_layers = n_layers
+        self.n_cl = N_classes
+        self.mode = mode
+
+        if (self.mode == 'continuous'):
+            self.loss = CTCL()
+            # for end-to-end
+            self.padding = 1
+        else:
+            # for feature extractor
+            self.padding = 0
+
+        if bi:
+            hidden_size = 2 * hidden_size
+        self.select_backbone(backbone)
+
+        use_temporal = False
+        if use_temporal:
+            self.temp_channels = 1024
+            self.tc_kernel_size = 5
+            self.tc_pool_size = 2
+            self.temporal = torch.nn.Sequential(
+                nn.Conv1d(self.dim_feats, 1024, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+                nn.ReLU(),
+                nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
+                nn.Conv1d(1024, 1024, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+                nn.ReLU(),
+                nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size))
+        planes = self.dim_feats
+        max_tokens  = 32+1
+        self.pe = PositionalEncoding1D(dim=planes, max_tokens=max_tokens)
+        self.transformer_encoder = TransformerEncoder(dim=planes, blocks=3, heads=8, dim_head=64, dim_linear_block=planes*2, dropout=0.2)
+        self.use_cls_token = True
+
+        self.cls_token = nn.Parameter(torch.randn(1, planes ))
+        self.fc = nn.Sequential(
+            nn.LayerNorm(planes),
+            nn.Linear(planes, self.n_cl)
+        )
+
+
+        # if self.mode == 'continuous':
+        #     self.init_param()
+
+    def forward(self, x, y=None):
+        # select continous or isolated
+        if (self.mode == 'continuous'):
+            return self.continuous_forwardtr(x, y)
+        elif (self.mode == 'isolated'):
+            return self.isolated_forward(x, y)
+
+        return None
+
+    def continuous_forward(self, x, y):
+        with torch.no_grad():
+            batch_size, C, timesteps, H, W = x.size()
+            c_in = x.view(batch_size * timesteps, C, H, W)
+            c_outputs = self.cnn(c_in)
+            c_out = c_outputs.contiguous().view(batch_size, timesteps, -1)
+        # c_out has size timesteps x dim feats
+        # temporal layers gets input size batch_size x dim_feats x timesteps
+        temp_input = c_out.permute(0, 2, 1)
+        temp = self.temporal(temp_input)
+        # temporal layers output size batch_size x dim_feats x timesteps
+        # rnn input must be timesteps x batch_size x dim_feats
+        rnn_input = temp.permute(2, 0, 1)
+        rnn_out, (h_n, h_c) = self.rnn(rnn_input)
+        fc_input = rnn_out.squeeze(1)
+        y_hat = self.fc(fc_input).unsqueeze(1)
+        if y != None:
+            loss_ctc = self.loss(y_hat, y)
+            return y_hat, loss_ctc
+        return y_hat
+
+    def continuous_forwardtr(self, x, y):
+        with torch.no_grad():
+            batch_size, C, timesteps, H, W = x.size()
+            c_in = x.view(batch_size * timesteps, C, H, W)
+            c_outputs = self.cnn(c_in)
+            c_out = c_outputs.contiguous().view(batch_size, timesteps, -1)
+        # c_out has size timesteps x dim feats
+        # temporal layers gets input size batch_size x dim_feats x timesteps
+        temp_input = c_out.permute(0, 2, 1)
+        temp = self.temporal(temp_input)
+        # temporal layers output size batch_size x dim_feats x timesteps
+        # rnn input must be timesteps x batch_size x dim_feats
+        rnn_input = rearrange(temp, 'b c t -> b t c')
+
+        x = self.pe(rnn_input)
+        x = rearrange(x, 'b t d -> t b d')
+        x = self.transformer_encoder(x)
+
+        y_hat = self.fc(x)
+        if y != None:
+            loss_ctc = self.loss(y_hat, y)
+            return y_hat, loss_ctc
+        return y_hat
+
+    def __inference__(self, x):
+        batch_size, timesteps, C, H, W = x.size()
+
+        c_in = x.view(batch_size * timesteps, C, H, W)
+        c_outputs = []
+        for i in range(batch_size * timesteps):
+            out = self.cnn(c_in[i, ...].unsqueeze(0))
+            c_outputs.append(out)
+
+        c_out = torch.stack(c_outputs)
+
+        c_out = c_out.contiguous().view(batch_size, timesteps, -1)
+        # c_out has size timesteps x dim feats
+        # temporal layers gets input size batch_size x dim_feats x timesteps
+        temp_input = c_out.permute(0, 2, 1)
+        temp = self.temporal(temp_input)
+        # temporal layers output size batch_size x dim_feats x timesteps
+        # rnn input must be timesteps x batch_size x dim_feats
+        rnn_input = temp.permute(2, 0, 1)
+        rnn_out, (h_n, h_c) = self.rnn(rnn_input)
+        fc_input = rnn_out.squeeze(1)
+        r_out = self.last_linear(fc_input).unsqueeze(1)
+
+        return r_out
+
+    def isolated_forward(self, x, y=None):
+
+        batch_size, C, timesteps, H, W = x.size()
+        c_in = x.view(batch_size * timesteps, C, H, W)
+        c_outputs = self.cnn(c_in)
+        c_out = c_outputs.contiguous().view(batch_size, timesteps, -1)
+        # train only feature extractor
+        # c_out has size batch_size x timesteps x dim feats
+        # temporal layers gets input size batch_size x dim_feats x timesteps
+        cls_token = repeat(self.cls_token, 'n d -> b n d', b=batch_size)
+       # print(cls_token.shape,c_out.shape)
+        x = torch.cat((cls_token, c_out), dim=1)
+        # print(x.shape)
+        x = self.pe(x)
+        x = self.transformer_encoder(x)
+        # print(x.shape,x[0].shape)
+        cls_token = x[:, 0, :]
+
+
+
+        y_hat = self.fc(cls_token)
+        #print(y_hat.shape)
+        if y != None:
+            loss = F.cross_entropy(y_hat, y.squeeze(-1))
+            return y_hat, loss
+        return y_hat
+
+    def init_param(self):
+        count = 0
+        for param in self.cnn.parameters():
+            count += 1
+            param.requires_grad = False
+
+    def select_backbone(self, backbone):
+
+        if (backbone == 'alexnet'):
+            self.aux_logits = False
+            self.cnn = models.alexnet(pretrained=True)
+
+            self.dim_feats = 4096
+
+            self.cnn.classifier[-1] = Identity()
+
+        elif (backbone == 'googlenet'):
+            self.aux_logits = False
+            from torchvision.models import googlenet
+
+            self.cnn = googlenet(pretrained=True, transform_input=False, aux_logits=self.aux_logits)
+            self.cnn.fc = Identity()
+            self.dim_feats = 1024
+            count = 0
+
+        elif (backbone == 'mobilenet2'):
+            self.aux_logits = False
+            from torchvision.models import mobilenet_v2
+
+            self.cnn = mobilenet_v2(pretrained=True)
+            self.cnn.fc = Identity()
+            self.cnn.classifier = Identity()
+            self.dim_feats = 1280
+            count = 0
+        elif (backbone == 'mobilenet2'):
+            self.aux_logits = False
+            from torchvision.models import mobilenet_v2
+
+            self.cnn = mobilenet_v2(pretrained=True)
+            self.cnn.fc = Identity()
+            self.cnn.classifier = Identity()
+            self.dim_feats = 1280
+            count = 0
+        elif backbone == 'pruned_mobilenet':
+            self.cnn = load_pruned_mobilenet()
+            self.cnn.fc = Identity()
+            self.cnn.classifier = Identity()
+            self.dim_feats = 1280
+        elif backbone == 'xcit_tiny_12_p16_224':
+            import timm
+            self.cnn=            timm.create_model('xcit_tiny_12_p16_224')
+            self.cnn.fc = Identity()
+            self.cnn.head = Identity()
+            self.dim_feats = 192
 
 
 def keypoint_detector(detector_path=None):

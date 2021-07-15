@@ -102,7 +102,7 @@ def main():
     else:
         pth_file = None
     log.info(f'{model}')
-    model.freeze_param()
+#    model.freeze_param()
     if (config.cuda and use_cuda):
         if torch.cuda.device_count() > 1:
             log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
@@ -112,7 +112,7 @@ def main():
 
 
     optimizer, scheduler = select_optimizer(model, config['model'], None)
-    log.info(f'{model}')
+    #log.info(f'{model}')
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     trainer = Trainer(config, model=model, optimizer=optimizer,
                       data_loader=training_generator, writer=writer, logger=log,

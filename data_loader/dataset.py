@@ -164,7 +164,7 @@ def islr_datasets(config):
         validation_generator = data.DataLoader(validation_set, **val_params)
         test_set = AUTSL(config, 'test', classes)
         test_generator = data.DataLoader(test_set, **test_params)
-        return training_generator, validation_generator, test_generator, classes
+        return training_generator, validation_generator, test_generator, classes,None
     elif config.dataset.name == 'AUTSL_SK':
 
         train_prefix = "train"

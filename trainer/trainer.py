@@ -63,6 +63,96 @@ class Trainer(BaseTrainer):
 
         self.train_metrics.reset()
         gradient_accumulation = self.gradient_accumulation
+        for batch_idx, (data, target) in enumerate(self.train_data_loader):
+
+            data = data.to(self.device)
+
+            target = target.long().to(self.device)
+            #print(data.shape, target.shape)
+            output, loss = self.model(data, target)
+            loss = loss.mean()
+
+            (loss / gradient_accumulation).backward()
+            if (batch_idx % gradient_accumulation == 0):
+                self.optimizer.step()  # Now we can do an optimizer step
+                self.optimizer.zero_grad()  # Reset gradients tensors
+
+            prediction = torch.max(output, 1)
+
+            acc = np.sum(prediction[1].cpu().numpy() == target.cpu().numpy()) / target.size(0)
+            writer_step = (epoch - 1) * self.len_epoch + batch_idx
+            # self.train_metrics.update_all_metrics(
+            #     {
+            #         'loss': loss.item(), 'acc': acc,
+            #     }, writer_step=writer_step)
+            self.train_metrics.update(key='loss', value=loss.item(), n=1, writer_step=writer_step)
+
+            self.train_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.squeeze(-1).cpu().numpy()),
+                                      n=target.size(0), writer_step=writer_step)
+
+            self._progress(batch_idx, epoch, metrics=self.train_metrics, mode='train')
+
+        self._progress(batch_idx, epoch, metrics=self.train_metrics, mode='train', print_summary=True)
+
+    def _valid_epoch(self, epoch, mode, loader):
+        """
+
+        Args:
+            epoch (int): current epoch
+            mode (string): 'validation' or 'test'
+            loader (dataloader):
+
+        Returns: validation loss
+
+        """
+        self.model.eval()
+        self.valid_sentences = []
+        self.valid_metrics.reset()
+
+        with torch.no_grad():
+            for batch_idx, (data, target) in enumerate(loader):
+                data = data.to(self.device)
+
+                target = target.long().to(self.device)
+
+                output, y_gloss, loss = self.model(data, target)
+                loss = loss.mean()
+                writer_step = (epoch - 1) * len(loader) + batch_idx
+
+                prediction = torch.max(output, 1)
+                acc = np.sum(prediction[1].cpu().numpy() == target.squeeze(-1).cpu().numpy()) / target.size(0)
+
+                # self.valid_metrics.update_all_metrics(
+                #     {'loss': loss.item(), 'acc': acc}, writer_step=writer_step)
+
+                self.valid_metrics.update(key='loss', value=loss.item(), n=1, writer_step=writer_step)
+                self.valid_metrics.update(key='acc', value=np.sum(prediction[1].cpu().numpy() == target.squeeze(-1).cpu().numpy()),
+                                          n=target.size(0), writer_step=writer_step)
+
+        self._progress(batch_idx, epoch, metrics=self.valid_metrics, mode=mode, print_summary=True)
+
+        # check_dir(self.checkpoint_dir)
+        val_loss = self.valid_metrics.avg('loss')
+        # pred_name = os.path.join(self.checkpoint_dir, f'{mode}_epoch_{epoch:d}_WER_{werr:.2f}_.csv')
+        #
+        # write_csv(self.valid_sentences, pred_name)
+
+        return val_loss
+
+
+
+    def _train_epoch_1(self, epoch):
+        """
+        Training logic for an epoch
+
+        Args:
+            epoch (int): current training epoch.
+        """
+
+        self.model.train()
+
+        self.train_metrics.reset()
+        gradient_accumulation = self.gradient_accumulation
         for batch_idx, (data, target,y_g) in enumerate(self.train_data_loader):
 
             data = data.to(self.device)
@@ -94,7 +184,7 @@ class Trainer(BaseTrainer):
 
         self._progress(batch_idx, epoch, metrics=self.train_metrics, mode='train', print_summary=True)
 
-    def _valid_epoch(self, epoch, mode, loader):
+    def _valid_epoch_1(self, epoch, mode, loader):
         """
 
         Args:
