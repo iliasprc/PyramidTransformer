@@ -124,7 +124,7 @@ def islr_datasets(config):
 
         # test_set = GSL_ISO(args, 'augment', classes, dim)
         # test_generator = data.DataLoader(test_set, **test_params)
-        return training_generator, val_generator, None, classes
+        return training_generator, val_generator, None, classes,None
     elif config.dataset.name == 'GSL_ISO_SI':
 
         print("RUN ON GREEK SI PROT ISOLATED")
@@ -209,7 +209,7 @@ def islr_datasets(config):
         training_generator = data.DataLoader(training_set, **train_params)
         test_set = WASLdataset(config,'test')
         test_generator = data.DataLoader(test_set, **train_params)
-        return training_generator, None, test_generator, training_set.classes
+        return training_generator, None, test_generator, training_set.classes,None
 
 
 def cslr_datasets(config):

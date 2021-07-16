@@ -115,7 +115,7 @@ class Trainer(BaseTrainer):
 
                 target = target.long().to(self.device)
 
-                output, y_gloss, loss = self.model(data, target)
+                output, loss = self.model(data, target)
                 loss = loss.mean()
                 writer_step = (epoch - 1) * len(loader) + batch_idx
 

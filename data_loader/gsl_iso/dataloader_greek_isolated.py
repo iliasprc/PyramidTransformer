@@ -61,7 +61,7 @@ class GSL_ISO(Base_dataset):
             print("{} {} instances  ".format(len(self.list_video_paths), mode))
             self.mode = 'train'
 
-        self.data_path = self.config.dataset.input_data
+        self.data_path = self.config.dataset.input_data + 'GSL_isolated/Greek_isolated'
 
     def __len__(self):
         return len(self.list_video_paths)

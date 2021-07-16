@@ -253,7 +253,7 @@ class GoogLeNet_TConvs(nn.Module):
 
 class ISL_cnn(nn.Module):
     def __init__(self, hidden_size=512, n_layers=2, dropt=0.5, bi=True, N_classes=1232, mode='isolated',
-                 backbone='xcit_tiny_12_p16_224'):
+                 backbone='repvgg_b0'):
         """
 
         :param hidden_size: Hidden size of BLSTM
@@ -284,27 +284,39 @@ class ISL_cnn(nn.Module):
             hidden_size = 2 * hidden_size
         self.select_backbone(backbone)
 
-        use_temporal = False
-        if use_temporal:
+        self.use_temporal = True
+        planes = self.dim_feats
+        if  self.use_temporal:
             self.temp_channels = 1024
             self.tc_kernel_size = 5
             self.tc_pool_size = 2
             self.temporal = torch.nn.Sequential(
-                nn.Conv1d(self.dim_feats, 1024, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
-                nn.ReLU(),
+                nn.Conv1d(self.dim_feats, 1024, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding,groups=256),
+                nn.LeakyReLU(),
                 nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
-                nn.Conv1d(1024, 1024, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
-                nn.ReLU(),
+                nn.Conv1d(1024, 1024, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding,groups=256),
+                nn.LeakyReLU(),
                 nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size))
-        planes = self.dim_feats
-        max_tokens  = 32+1
-        self.pe = PositionalEncoding1D(dim=planes, max_tokens=max_tokens)
-        self.transformer_encoder = TransformerEncoder(dim=planes, blocks=3, heads=8, dim_head=64, dim_linear_block=planes*2, dropout=0.2)
-        self.use_cls_token = True
+            self.temporal1 = torch.nn.Sequential(
+                nn.Conv1d(self.dim_feats, 512, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+                nn.LeakyReLU(),
+                nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
+                nn.Conv1d(512, 512, kernel_size=1, stride=1, padding=self.padding),
+                nn.LeakyReLU(),
+                nn.Conv1d(512, 1024, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
+                nn.LeakyReLU(),
+                nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size))
+            planes = 1024
 
-        self.cls_token = nn.Parameter(torch.randn(1, planes ))
+        else:
+            max_tokens  = 32+1
+            self.pe = PositionalEncoding1D(dim=planes, max_tokens=max_tokens)
+            self.transformer_encoder = TransformerEncoder(dim=planes, blocks=3, heads=8, dim_head=64, dim_linear_block=planes*2, dropout=0.2)
+            self.use_cls_token = True
+
+            self.cls_token = nn.Parameter(torch.randn(1, planes ))
         self.fc = nn.Sequential(
-            nn.LayerNorm(planes),
+           # nn.LayerNorm(planes),
             nn.Linear(planes, self.n_cl)
         )
 
@@ -400,18 +412,25 @@ class ISL_cnn(nn.Module):
         # train only feature extractor
         # c_out has size batch_size x timesteps x dim feats
         # temporal layers gets input size batch_size x dim_feats x timesteps
-        cls_token = repeat(self.cls_token, 'n d -> b n d', b=batch_size)
-       # print(cls_token.shape,c_out.shape)
-        x = torch.cat((cls_token, c_out), dim=1)
-        # print(x.shape)
-        x = self.pe(x)
-        x = self.transformer_encoder(x)
-        # print(x.shape,x[0].shape)
-        cls_token = x[:, 0, :]
+        if self.use_temporal:
+
+            out = self.temporal(rearrange(c_out,'b t d -> b d t')).squeeze(-1)
+            out2 = self.temporal1(rearrange(c_out, 'b t d -> b d t')).squeeze(-1)
+
+            y_hat = self.fc(out+out2)
+        else:
+            cls_token = repeat(self.cls_token, 'n d -> b n d', b=batch_size)
+           # print(cls_token.shape,c_out.shape)
+            x = torch.cat((cls_token, c_out), dim=1)
+            # print(x.shape)
+            x = self.pe(x)
+            x = self.transformer_encoder(x)
+            # print(x.shape,x[0].shape)
+            cls_token = x[:, 0, :]
 
 
 
-        y_hat = self.fc(cls_token)
+            y_hat = self.fc(cls_token)
         #print(y_hat.shape)
         if y != None:
             loss = F.cross_entropy(y_hat, y.squeeze(-1))
@@ -469,11 +488,16 @@ class ISL_cnn(nn.Module):
         elif backbone == 'xcit_tiny_12_p16_224':
             import timm
             self.cnn=            timm.create_model('xcit_tiny_12_p16_224')
-            self.cnn.fc = Identity()
-            self.cnn.head = Identity()
-            self.dim_feats = 192
+            #self.cnn.fc = Identity()
+            self.cnn.head.fc = Identity()
+            self.dim_feats = 1280
 
-
+        else:
+            import timm
+            self.cnn=            timm.create_model(backbone)
+            #self.cnn.fc = Identity()
+            self.cnn.head.fc = Identity()
+            self.dim_feats = 1280
 def keypoint_detector(detector_path=None):
     # load an instance segmentation model pre-trained on COCO
     '''
