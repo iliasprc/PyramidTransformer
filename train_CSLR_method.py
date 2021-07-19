@@ -107,23 +107,7 @@ def main():
 
 
 
-    if (config.load):
-        #model.fc = torch.nn.Linear(2048, 2042)
-        model.cnn.replace_logits(311)
-        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=True, load_seperate_layers=False)
 
-        model.cnn.replace_logits(311)
-
-    else:
-        pth_file = None
-    model.to(device)
-    if (config.cuda and use_cuda):
-        if torch.cuda.device_count() > 1:
-            log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
-
-            model = torch.nn.DataParallel(model)
-
-    optimizer, scheduler = select_optimizer(model, config['model'], None)
 
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     log.info(f"{model}")

@@ -3,7 +3,7 @@ import warnings
 import torch
 import torch.nn as nn
 
-
+from base.base_model import BaseModel
 from models.vmz.layers import Bottleneck, IPConv3DDepthwise, BasicStem, BasicStem_Pool, ECA_3D
 
 model_urls = {
@@ -87,6 +87,18 @@ class ECAVideoResNet(nn.Module):
         x = self.fc(x)
 
         return x
+    def training_step(self, train_batch):
+        x, y = train_batch
+        y_hat = self.forward(x)
+        # print(y_hat.shape)
+        loss = self.loss(y_hat, y)
+        return y_hat, loss
+
+    def validation_step(self, train_batch):
+        x, y = train_batch
+        y_hat = self.forward(x)
+        loss = self.loss(y_hat, y)
+        return y_hat, loss
 
     def _make_layer(self, block, conv_builder, planes, blocks, stride=1):
         downsample = None

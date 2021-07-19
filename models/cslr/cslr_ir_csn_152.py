@@ -1,12 +1,15 @@
 import warnings
-
+from base.base_model import BaseModel
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-from models.vmz.layers import Bottleneck, Conv3DDepthwise, BasicStem, BasicStem_Pool
+
 from models.cslr.layers import PositionalEncoding1D
+from models.vmz.layers import Bottleneck, Conv3DDepthwise, BasicStem, BasicStem_Pool
 from utils.ctcl import CTCL
+
 model_urls = {
     "r2plus1d_34_8_ig65m": "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch-9bae36ae.pth",
     # noqa: E501
@@ -34,7 +37,7 @@ model_urls = {
 }
 
 
-class CSLRVideoResNet(nn.Module):
+class CSLRVideoResNet(BaseModel):
 
     def __init__(self, block, conv_makers, layers,
                  stem, num_classes=400,
@@ -42,10 +45,10 @@ class CSLRVideoResNet(nn.Module):
         """Generic resnet video generator.
 
         Args:
-            block (nn.Module): resnet building block
+            block (BaseModel): resnet building block
             conv_makers (list(functions)): generator function for each layer
             layers (List[int]): number of blocks per layer
-            stem (nn.Module, optional): Resnet stem, if None, defaults to conv-bn-relu. Defaults to None.
+            stem (BaseModel, optional): Resnet stem, if None, defaults to conv-bn-relu. Defaults to None.
             num_classes (int, optional): Dimension of the final FC layer. Defaults to 400.
             zero_init_residual (bool, optional): Zero init bottleneck residual BN. Defaults to False.
         """
@@ -61,7 +64,7 @@ class CSLRVideoResNet(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
-        self.pe = PositionalEncoding1D(2048,dropout=0.1,max_tokens=300)
+        self.pe = PositionalEncoding1D(2048, dropout=0.1, max_tokens=300)
         encoder_layer = nn.TransformerEncoderLayer(d_model=2048, dim_feedforward=4096, nhead=8, dropout=0.2)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1)
         # init weights
@@ -75,11 +78,11 @@ class CSLRVideoResNet(nn.Module):
                 if isinstance(m, Bottleneck):
                     nn.init.constant_(m.bn3.weight, 0)
 
-    def forward(self, x, y=None):
-        #print(x.shape)
+    def forward(self, x):
+        # print(x.shape)
         x = x.unfold(2, self.window_size, self.stride).squeeze(0)
         x = rearrange(x, 'c n h w t -> n c t h w')
-        #print(x.shape)
+        # print(x.shape)
         with torch.no_grad():
             x = self.stem(x)
 
@@ -89,22 +92,20 @@ class CSLRVideoResNet(nn.Module):
             x = self.layer4(x)
 
         x = self.avgpool(x)
-        #print(x.shape)
+        # print(x.shape)
         # Flatten the layer to fc
-        x = rearrange(x.flatten(1).unsqueeze(1),'t b c -> b t c')
+        x = rearrange(x.flatten(1).unsqueeze(1), 't b c -> b t c')
         x = self.pe(x)
-        x = rearrange(x,'b t c -> t b c')
-        #print(x.shape)
+        x = rearrange(x, 'b t c -> t b c')
+        # print(x.shape)
 
         x = self.transformer_encoder(x)
         y_hat = self.fc(x)
-       # print(y_hat.shape)
-        if y!=None:
-            loss_ctc = self.loss(y_hat,y)
-            return y_hat,loss_ctc
+        # print(y_hat.shape)
+
         return y_hat
 
-    def __inference__(self,x,y=None):
+    def __inference__(self, x, y=None):
         # print(x.shape)
         x = x.unfold(2, self.window_size, self.stride).squeeze(0)
         x = rearrange(x, 'c n h w t -> n c t h w')
@@ -135,6 +136,7 @@ class CSLRVideoResNet(nn.Module):
             loss_ctc = self.loss(y_hat, y)
             return y_hat, loss_ctc
         return y_hat
+
     def training_step(self, train_batch):
         x, y = train_batch
         y_hat = self.forward(x)
@@ -180,25 +182,12 @@ class CSLRVideoResNet(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
-    def replace_logits(self,n_classes):
+
+    def replace_logits(self, n_classes):
         self.fc = nn.Linear(2048, n_classes)
         nn.init.normal_(self.fc.weight, 0, 0.01)
         if self.fc.bias is not None:
             nn.init.constant_(self.fc.bias, 0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def cslr_ir_csn_152(pretraining="ig65m_32frms", pretrained=False, progress=False, num_classes=226, **kwargs):
@@ -222,7 +211,7 @@ def cslr_ir_csn_152(pretraining="ig65m_32frms", pretrained=False, progress=False
             pretrained = False
     use_pool1 = True
     model = CSLRVideoResNet(block=Bottleneck, conv_makers=[Conv3DDepthwise] * 4, layers=[3, 8, 36, 3],
-                        stem=BasicStem_Pool if use_pool1 else BasicStem, num_classes=num_classes, **kwargs)
+                            stem=BasicStem_Pool if use_pool1 else BasicStem, num_classes=num_classes, **kwargs)
 
     # We need exact Caffe2 momentum for BatchNorm scaling
     for m in model.modules():

@@ -5,13 +5,12 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from models.multimodal.mutimodal_model import RGBD_Transformer
+from models.cslr.googlenet_tcl import GoogLeNet_TConvs, ISL_cnn
+from models.gcn.model.decouple_gcn_attn import STGCN, STGCN_Transformer
+from models.skeleton.skeleton_transformer import SkeletonTR, CSLRSkeletonTR, SK_TCL
 from models.vmz.eca_ir_csn_152 import eca_ir_csn_152
 from models.vmz.ir_csn_152 import ir_csn_152
-from models.vmz.pyramid_transformer import ir_csn_152_transformer,ir_csn_152_timesformer
-from models.skeleton.skeleton_transformer import SkeletonTR,CSLRSkeletonTR,SK_TCL
-from models.cslr.googlenet_tcl import GoogLeNet_TConvs,ISL_cnn
-from models.gcn.model.decouple_gcn_attn import STGCN,STGCN_Transformer
+from models.vmz.pyramid_transformer import ir_csn_152_transformer, ir_csn_152_timesformer
 
 model_urls = {
     "r2plus1d_34_8_ig65m": "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch-9bae36ae.pth",
@@ -40,51 +39,50 @@ model_urls = {
 }
 
 
-
 def CSLR_video_encoder(config, N_classes):
     from models.cslr.cslr_ir_csn_152 import cslr_ir_csn_152
-    from models.cslr.i3d import InceptionI3d,SLR_I3D
+    from models.cslr.i3d import SLR_I3D
 
     if config.model.name == 'IR_CSN_152':
-        return cslr_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
+        return cslr_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
+                               num_classes=N_classes)
     elif config.model.name == 'I3D':
-        return SLR_I3D(num_classes=100)
-    elif config.model.name =='GoogLeNet_TConvs':
-        return GoogLeNet_TConvs(N_classes=N_classes,mode='continuous')
+        return SLR_I3D(config, num_classes=100)
+    elif config.model.name == 'GoogLeNet_TConvs':
+        return GoogLeNet_TConvs(config, N_classes=N_classes, mode='continuous')
     elif config.model.name == 'CSLR_I3D':
         return SLR_I3D(num_classes=N_classes)
     elif config.model.name == 'SkeletonTR':
-        return CSLRSkeletonTR(N_classes = N_classes)
+        return CSLRSkeletonTR(N_classes=N_classes)
     elif config.model.name == 'SK_TCL':
         return SK_TCL(N_classes=N_classes)
     elif config.model.name == 'IR_CSN_152_Transformer':
         from models.cslr.cslr_pyramid_transformer import cslr_ir_csn_152_transformer
         return cslr_ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
-                                      num_classes=N_classes)
+                                           num_classes=N_classes)
     elif config.model.name == 'RGBSK':
         from models.multimodal.mmodal_rgbsk import RGBSK_model
         return RGBSK_model(N_classes=N_classes)
-    elif config.model.name =='ir_csn_152_1d':
+    elif config.model.name == 'ir_csn_152_1d':
         from models.multimodal.mutimodal_model import ir_csn_152_1d
         return ir_csn_152_1d(num_classes=N_classes)
 
+
 def ISLR_video_encoder(config, N_classes):
-    from models.cslr.i3d import InceptionI3d,SLR_I3D
     from models.cslr.i3d_fs import InceptionI3d_Sentence
     if config.model.name == 'IR_CSN_152':
         return ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
     elif config.model.name == 'I3D':
         return InceptionI3d_Sentence(num_classes=N_classes)
-    elif config.model.name =='GoogLeNet_TConvs':
-        return GoogLeNet_TConvs(N_classes=N_classes)
+
     elif config.model.name == 'ISL_cnn':
-        return ISL_cnn(N_classes=N_classes)
+        return ISL_cnn(config, N_classes=N_classes)
     elif config.model.name == 'SkeletonTR':
-        return SkeletonTR(N_classes = N_classes)
+        return SkeletonTR(N_classes=N_classes)
     elif config.model.name == 'STGCN':
-        return STGCN(config,num_class=N_classes)
+        return STGCN(config, num_class=N_classes)
     elif config.model.name == 'STGCN_Transformer':
-        return STGCN_Transformer(config,num_class=N_classes)
+        return STGCN_Transformer(config, num_class=N_classes)
     elif config.model.name == 'ECA_IR_CSN_152':
         return eca_ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                               num_classes=N_classes)
@@ -92,30 +90,31 @@ def ISLR_video_encoder(config, N_classes):
     elif config.model.name == 'Pyramid_Transformer':
         return ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                                       num_classes=N_classes)
-    elif config.model.name =='ir_csn_152_1d':
+    elif config.model.name == 'ir_csn_152_1d':
         from models.multimodal.mutimodal_model import ir_csn_152_1d
         return ir_csn_152_1d(num_classes=N_classes)
     elif config.model.name == 'ir_csn_152_timesformer':
         return ir_csn_152_timesformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
                                       num_classes=N_classes)
+
+
 def RGBD_model(config, N_classes):
     if config.model.name == 'RGBD_Transformer':
         m = RGBD_Transformer(config, N_classes)
         return m
     elif config.model.name == 'RGB_SK_Transformer':
         from models.multimodal.mutimodal_model import RGB_SK_Transformer
-        m = RGB_SK_Transformer(config,N_classes)
+        m = RGB_SK_Transformer(config, N_classes)
         return m
-    elif config.model.name =='RGBDSK_Transformer':
+    elif config.model.name == 'RGBDSK_Transformer':
         from models.multimodal.mutimodal_model import RGBD_SK_Transformer
         return RGBD_SK_Transformer(config, N_classes)
+
+
 def showgradients(model):
     for name, param in model.named_parameters():
         print(name, ' ', type(param.data), param.size())
         print("GRADS= \n", param.grad)
-
-
-
 
 
 def save_checkpoint(model, optimizer, loss, checkpoint_dir, name, save_seperate_layers=False):
@@ -129,8 +128,6 @@ def save_checkpoint(model, optimizer, loss, checkpoint_dir, name, save_seperate_
     state['optimizer_dict'] = optimizer.state_dict()
     state['loss'] = str(loss)
     filepath = os.path.join(checkpoint_dir, name + '.pth')
-
-
 
     if not os.path.exists(checkpoint_dir):
         print("Checkpoint Directory does not exist! Making directory {}".format(checkpoint_dir))
@@ -304,17 +301,11 @@ def select_optimizer(model, config, checkpoint=None):
         optimizer = optim.Adam(model.parameters(), lr=float(config['optimizer']['lr']), weight_decay=0.00001)
     elif (opt == 'SGD'):
         print(" use optimizer SGD lr ", lr)
-        optimizer = optim.SGD(model.parameters(), lr=float(config['optimizer']['lr']), momentum=0.9,nesterov=False,
+        optimizer = optim.SGD(model.parameters(), lr=float(config['optimizer']['lr']), momentum=0.9, nesterov=False,
                               weight_decay=float(config['optimizer']['weight_decay']))
     elif (opt == 'RMSprop'):
         print(" use RMS  lr", lr)
         optimizer = optim.RMSprop(model.parameters(), lr=float(config['optimizer']['lr']))
-    if (checkpoint != None):
-        # print('load opt cpkt')
-        optimizer.load_state_dict(checkpoint['optimizer_dict'])
-        for g in optimizer.param_groups:
-            g['lr'] = 0.005
-        print(optimizer.state_dict()['state'].keys())
 
     if config['scheduler']['type'] == 'ReduceLRonPlateau':
         scheduler = ReduceLROnPlateau(optimizer, factor=config['scheduler']['scheduler_factor'],

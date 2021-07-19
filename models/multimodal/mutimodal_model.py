@@ -1,18 +1,18 @@
 import os
 import warnings
-
+from base.base_model import BaseModel
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import repeat, rearrange
 from omegaconf import OmegaConf
-from utils.loss import LabelSmoothingCrossEntropy
-from base.base_model import BaseModel
+
+from models.transformers.transformer import TransformerEncoder
 from models.vmz.layers import BasicStem_Pool, SpatialModulation3D, Conv3DDepthwise, PositionalEncoding1D
 from models.vmz.layers1d import Conv1DDepthwise, BasicStem_Pool1D, Bottleneck1D
 from models.vmz.resnet import Bottleneck
-from models.gcn.model.decouple_gcn_attn import STGCN
-from models.transformers.transformer import TransformerEncoder
+
 model_urls = {
     "r2plus1d_34_8_ig65m": "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch-9bae36ae.pth",
     # noqa: E501
@@ -72,8 +72,8 @@ class ResNet1D(nn.Module):
 
     def forward(self, x, y=None):
         # with torch.no_grad():
-        x = rearrange(x,'b t j axis -> b  (j axis) t')
-        #print(x.shape)
+        x = rearrange(x, 'b t j axis -> b  (j axis) t')
+        # print(x.shape)
         x = self.stem(x)
 
         x = self.layer1(x)
@@ -127,14 +127,6 @@ def ir_csn_152_1d(num_classes=226,
 
     return model
 
-
-# m = ir_csn_152_1d()
-# print(m)
-# inp = torch.randn(4,27*3,32)
-# from torchsummary import summary
-# summary(m,(27*3,32),device='cpu')
-# o = m(inp)
-# print(o.shape)
 
 class TransformerResNet(nn.Module):
 
@@ -252,6 +244,7 @@ class TransformerResNet(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
 
+
 class IResNet(nn.Module):
 
     def __init__(self, block, conv_makers, layers,
@@ -282,8 +275,6 @@ class IResNet(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool3d((8, 1, 1))
 
-
-
         # init weights
         self._initialize_weights()
 
@@ -301,7 +292,7 @@ class IResNet(nn.Module):
             x = self.layer2(x)
 
         x = self.layer3(x)
-        x = rearrange(self.avgpool(self.layer4(x)),'b c t h w -> b c (t h w)')
+        x = rearrange(self.avgpool(self.layer4(x)), 'b c t h w -> b c (t h w)')
         return x
 
     def training_step(self, train_batch):
@@ -353,7 +344,7 @@ class IResNet(nn.Module):
 
 
 def ir_csn_152_(pretraining="ig_ft_kinetics_32frms", pretrained=False, progress=False, num_classes=226,
-                           **kwargs):
+                **kwargs):
     avail_pretrainings = [
         "ig65m_32frms",
         "ig_ft_kinetics_32frms",
@@ -374,7 +365,7 @@ def ir_csn_152_(pretraining="ig_ft_kinetics_32frms", pretrained=False, progress=
             pretrained = False
     use_pool1 = True
     model = IResNet(block=Bottleneck, conv_makers=[Conv3DDepthwise] * 4, layers=[3, 8, 36, 3],
-                              stem=BasicStem_Pool, num_classes=num_classes, **kwargs)
+                    stem=BasicStem_Pool, num_classes=num_classes, **kwargs)
 
     # We need exact Caffe2 momentum for BatchNorm scaling
     for m in model.modules():
@@ -459,8 +450,6 @@ class SkeletonTR(nn.Module):
         return y_hat
 
 
-
-
 class SkTR(nn.Module):
     def __init__(self, mode='isolated', planes=128, N_classes=226):
         super(SkTR, self).__init__()
@@ -479,137 +468,21 @@ class SkTR(nn.Module):
             nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size),
             nn.Conv1d(planes, planes, kernel_size=self.tc_kernel_size, stride=1, padding=self.padding),
             nn.ReLU(),
-            nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size)
-
-           )
-        # self.pe = PositionalEncoding1D(dim = planes,max_tokens=max_tokens)
-        #
-        # self.transformer_encoder = TransformerEncoder(dim=planes, blocks=1, heads=8, dim_head=64, dim_linear_block=planes, dropout=0.1)
-        # # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
-        # # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
-        #
-        # self.use_cls_token = True
-        # self.mode = mode
-        # if mode == 'isolated':
-        #     self.loss = nn.CrossEntropyLoss()
-        #
-        # if self.use_cls_token:
-        #     self.cls_token = nn.Parameter(torch.randn(1, planes))
-        #     self.to_out = nn.Sequential(
-        #         nn.LayerNorm(planes),
-        #         nn.Linear(planes, N_classes)
-        #     )
-        # else:
-        #     self.classifier = nn.Linear(planes, N_classes)
+            nn.MaxPool1d(self.tc_pool_size, self.tc_pool_size))
 
     def forward(self, x, y=None):
         b = x.shape[0]
 
         x = rearrange(x, 'b t k a -> b t (k a)')
-        x =self.embed(x)
+        x = self.embed(x)
         x = rearrange(x, 'b t d -> b d t')
         x = self.tcl(x)
 
-        #x = rearrange(x, 'b d t -> b t d')
+        # x = rearrange(x, 'b d t -> b t d')
         return x
 
-        # x = self.pe(x)
-        #
-        # if self.use_cls_token:
-        #     cls_token = repeat(self.cls_token, 'n d -> b n d', b=b)
-        #     ##print(cls_token.shape,x.shape)
-        #     x = torch.cat((cls_token, x), dim=1)
-        #     ##print(x.shape)
-        #     x = rearrange(x, 'b t d -> t b d')
-        #
-        #     x = self.transformer_encoder(x)
-        #     ##print(x.shape,x[0].shape)
-        #     # cls_token = x
-        #     # if self.mode == 'isolated':
-        #     # print(x.shape)
-        #     cls_token = x[0]
-        #     return cls_token
-        #     y_hat = self.to_out(cls_token)
-        # else:
-        #     # #print(x.shape)
-        #     x = rearrange(x, 'b t d -> t b d')
-        #
-        #     x = self.transformer_encoder(x)
-        #     # x = self.transformer_encoder(rearrange(x, 't b d -> d b t'))
-        #     x = torch.mean(x, dim=0)
-        #     y_hat = self.classifier(x)
-        #
-        # if y != None:
-        #     loss = self.loss(y_hat, y)
-        #     return y_hat, loss
-        # return y_hat
 
-class RGBD_Transformer(BaseModel):
-    def __init__(self, config, N_classes):
-        """
-
-        Args:
-            args (): argparse arguments
-            N_classes (int): number of classes
-        """
-        super().__init__()
-        config = OmegaConf.load(os.path.join(config.cwd, 'models/multimodal/model.yml'))['model']
-        self.rgb_encoder = ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
-                                                  num_classes=N_classes)
-        self.depth_encoder = ir_csn_152_transformer(pretraining="ig_ft_kinetics_32frms", pretrained=True,
-                                                    progress=False,
-                                                    num_classes=N_classes)
-
-        # encoder_layer = nn.TransformerEncoderLayer(d_model=32, dim_feedforward=planes, nhead=8, dropout=0.2)
-        # self.transformer_encoder2 = nn.TransformerEncoder(encoder_layer, num_layers=2)
-
-        self.use_cls_token = True
-        self.classifier = nn.Linear(6144, N_classes)
-        self.device0 = torch.device('cuda:0')
-        self.device1 = torch.device('cuda:1')
-
-    def forward(self, train_batch, return_loss=True):
-        rgb_tensor, depth_tensor, y = train_batch
-
-        features_rgb = self.rgb_encoder(rgb_tensor)
-        features_depth = self.depth_encoder(depth_tensor)
-
-        concatenated = torch.cat((features_rgb, features_depth), dim=1)
-        concatenated = self.eca(concatenated.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)).squeeze(-1).squeeze(-1).squeeze(
-            -1)
-        logits = self.classifier(concatenated)
-        if return_loss:
-            loss = F.cross_entropy(logits, y.squeeze(-1))  # .mean()
-
-            return logits, loss, y
-        return logits, y
-
-    def training_step(self, train_batch, batch_idx=None):
-        rgb_tensor, depth_tensor, y = train_batch
-
-        features_rgb = self.rgb_encoder(rgb_tensor.to(self.device0))
-        features_depth = self.depth_encoder(depth_tensor.to(self.device1))
-
-        concatenated = torch.cat((features_rgb, features_depth.to(self.device0)), dim=1).to(self.device0)
-
-        logits = self.classifier(concatenated)
-        loss = F.cross_entropy(logits, y.squeeze(-1).to(self.device0))
-        return logits, loss, y
-
-    def validation_step(self, train_batch, batch_idx=None):
-        rgb_tensor, depth_tensor, y = train_batch
-        # (len(train_batch))
-        features_rgb = self.rgb_encoder(rgb_tensor.to(self.device0))
-        features_depth = self.depth_encoder(depth_tensor.to(self.device1))
-        # y = y.to(self.device0)
-        concatenated = torch.cat((features_rgb, features_depth.to(self.device0)), dim=1).to(self.device0)
-
-        logits = self.classifier(concatenated)
-        loss = F.cross_entropy(logits, y.squeeze(-1).to(self.device0))
-        return logits, loss, y
-
-
-class SK_TCL(nn.Module):
+class SK_TCL(BaseModel):
     def __init__(self, channels=128, N_classes=311):
         super(SK_TCL, self).__init__()
 
@@ -652,6 +525,18 @@ class SK_TCL(nn.Module):
             return y_hat, loss
         return y_hat
 
+    def training_step(self, train_batch, batch_idx=None):
+        x, y = train_batch
+        y_hat = self.forward(x)
+        loss = self.loss(y_hat, y)
+        return y_hat, loss
+
+    def validation_step(self, train_batch, batch_idx=None):
+        x, y = train_batch
+        y_hat = self.forward(x)
+        loss = self.loss(y_hat, y)
+        return y_hat, loss
+
 
 class RGBD_SK_Transformer(BaseModel):
     def __init__(self, config, N_classes):
@@ -662,90 +547,75 @@ class RGBD_SK_Transformer(BaseModel):
             N_classes (int): number of classes
         """
         super().__init__()
-        #self.sk_encoder = STGCN(config, num_class=N_classes)
+        # self.sk_encoder = STGCN(config, num_class=N_classes)
         self.sk_encoder = SkTR(planes=128, N_classes=N_classes)
         config = OmegaConf.load(os.path.join(config.cwd, 'models/multimodal/model.yml'))['model']
         self.rgb_encoder = ir_csn_152_(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
-                                                  num_classes=N_classes, use_tpn=False)
+                                       num_classes=N_classes, use_tpn=False)
         self.depth_encoder = ir_csn_152_(pretraining="ig_ft_kinetics_32frms", pretrained=True,
-                                                    progress=False,
-                                                    num_classes=N_classes, use_tpn=False)
+                                         progress=False,
+                                         num_classes=N_classes, use_tpn=False)
 
         self.rgb_encoder.use_tr = False
         self.depth_encoder.use_tr = False
 
         self.reduce = nn.Conv1d(4224, 2048, kernel_size=1, bias=False)
         planes = 2048
-        max_tokens = 8+1
-        self.pe = PositionalEncoding1D(dim = planes,max_tokens=max_tokens)
+        max_tokens = 8 + 1
+        self.pe = PositionalEncoding1D(dim=planes, max_tokens=max_tokens)
 
-        self.transformer_encoder = TransformerEncoder(dim=planes, blocks=2, heads=8, dim_head=64, dim_linear_block=planes, dropout=0.1)
+        self.transformer_encoder = TransformerEncoder(dim=planes, blocks=2, heads=8, dim_head=64,
+                                                      dim_linear_block=planes, dropout=0.1)
         self.use_cls_token = True
         if self.use_cls_token:
-            self.cls_token = nn.Parameter(torch.randn(1, planes ))
+            self.cls_token = nn.Parameter(torch.randn(1, planes))
             self.classifier = nn.Sequential(
                 nn.LayerNorm(planes),
                 nn.Linear(planes, N_classes)
             )
 
         self.crit = nn.CrossEntropyLoss()
-        #self.crit = LabelSmoothingCrossEntropy()
+        # self.crit = LabelSmoothingCrossEntropy()
         self.device0 = torch.device('cuda:0')
         self.device1 = torch.device('cuda:1')
 
     def forward(self, train_batch, return_loss=True):
         rgb_tensor, depth_tensor, sk, y = train_batch
         # print(sk.shape)
-        #sk = rearrange(sk, 'b t j d -> b (j d) t')
+        # sk = rearrange(sk, 'b t j d -> b (j d) t')
         features_sk = self.sk_encoder(sk)
 
         features_rgb = self.rgb_encoder(rgb_tensor)
 
         features_depth = self.depth_encoder(depth_tensor)
-       # print(f"RGB {features_rgb.shape} D {features_depth.shape} sk {features_sk.shape}")
+        # print(f"RGB {features_rgb.shape} D {features_depth.shape} sk {features_sk.shape}")
         concatenated = torch.cat((features_rgb, features_depth, features_sk), dim=1)
         b = concatenated.shape[0]
-        x = self.reduce(concatenated)#
-        #print()
+        x = self.reduce(concatenated)  #
+        # print()
         cls_token = repeat(self.cls_token, 'n c -> b n c', b=b)
-        #print(x.shape,cls_token.shape)
+        # print(x.shape,cls_token.shape)
         x = rearrange(x, 'b c t -> b t c')
         x = torch.cat((cls_token, x), dim=1)
-        #print(x.shape)
+        # print(x.shape)
         x = self.pe(x)
         x = self.transformer_encoder(x)
-        #print(x.shape)
-        #x = rearrange(x, 'b t d -> t b d')
+        # print(x.shape)
+        # x = rearrange(x, 'b t d -> t b d')
 
-        logits = self.classifier(x[:,0,:])
-        if return_loss:
-            loss = self.crit(logits, y.squeeze(-1))  # .mean()
+        logits = self.classifier(x[:, 0, :])
 
-            return logits, loss, y
-        return logits, y
+        return logits
 
     def training_step(self, train_batch, batch_idx=None):
-        rgb_tensor, depth_tensor, y = train_batch
-
-        features_rgb = self.rgb_encoder(rgb_tensor.to(self.device0))
-
-        features_depth = self.depth_encoder(depth_tensor.to(self.device1))
-
-        concatenated = torch.cat((features_rgb, features_depth.to(self.device0)), dim=1).to(self.device0)
-
-        logits = self.classifier(concatenated)
+        rgb_tensor, depth_tensor, sk, y = train_batch
+        logits = self.forward(train_batch)
         loss = F.cross_entropy(logits, y.squeeze(-1).to(self.device0))
         return logits, loss, y
 
     def validation_step(self, train_batch, batch_idx=None):
-        rgb_tensor, depth_tensor, y = train_batch
-        # (len(train_batch))
-        features_rgb = self.rgb_encoder(rgb_tensor.to(self.device0))
-        features_depth = self.depth_encoder(depth_tensor.to(self.device1))
-        # y = y.to(self.device0)
-        concatenated = torch.cat((features_rgb, features_depth.to(self.device0)), dim=1).to(self.device0)
-
-        logits = self.classifier(concatenated)
+        rgb_tensor, depth_tensor, sk, y = train_batch
+        logits = self.forward(train_batch)
         loss = F.cross_entropy(logits, y.squeeze(-1).to(self.device0))
         return logits, loss, y
 
@@ -761,7 +631,7 @@ class RGB_SK_Transformer(BaseModel):
         super().__init__()
         config = OmegaConf.load(os.path.join(config.cwd, 'models/multimodal/model.yml'))['model']
         self.rgb_encoder = ir_csn_152_(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False,
-                                                  num_classes=N_classes)
+                                       num_classes=N_classes)
         self.sk_encoder = SkeletonTR(planes=512, N_classes=226)
         # self.eca = ECA_3D(k_size=11)
         self.classifier = nn.Linear(3072 + 512, N_classes)
@@ -784,25 +654,28 @@ class RGB_SK_Transformer(BaseModel):
         return logits, y
 
     def training_step(self, train_batch, batch_idx=None):
-        rgb_tensor, depth_tensor, y = train_batch
+        rgb_tensor, sk_tensor, y = train_batch
 
-        features_rgb = self.rgb_encoder(rgb_tensor.to(self.device0))
-        features_depth = self.depth_encoder(depth_tensor.to(self.device1))
-
-        concatenated = torch.cat((features_rgb, features_depth.to(self.device0)), dim=1).to(self.device0)
+        features_rgb = self.rgb_encoder(rgb_tensor)
+        features_sk = self.sk_encoder(sk_tensor)
+        # print(features_rgb.shape,features_sk.shape)
+        concatenated = torch.cat((features_rgb, features_sk), dim=1)
 
         logits = self.classifier(concatenated)
-        loss = F.cross_entropy(logits, y.squeeze(-1).to(self.device0))
+        loss = F.cross_entropy(logits, y.squeeze(-1))
+        self.log('Train/Loss', loss)
         return logits, loss, y
 
     def validation_step(self, train_batch, batch_idx=None):
-        rgb_tensor, depth_tensor, y = train_batch
-        # (len(train_batch))
-        features_rgb = self.rgb_encoder(rgb_tensor.to(self.device0))
-        features_depth = self.depth_encoder(depth_tensor.to(self.device1))
-        # y = y.to(self.device0)
-        concatenated = torch.cat((features_rgb, features_depth.to(self.device0)), dim=1).to(self.device0)
+        rgb_tensor, sk_tensor, y = train_batch
+
+        features_rgb = self.rgb_encoder(rgb_tensor)
+        features_sk = self.sk_encoder(sk_tensor)
+        # print(features_rgb.shape,features_sk.shape)
+        concatenated = torch.cat((features_rgb, features_sk), dim=1)
 
         logits = self.classifier(concatenated)
-        loss = F.cross_entropy(logits, y.squeeze(-1).to(self.device0))
+        loss = F.cross_entropy(logits, y.squeeze(-1))
         return logits, loss, y
+    def configure_optimizers(self):
+        pass

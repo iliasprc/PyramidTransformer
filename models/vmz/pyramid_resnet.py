@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-
+import pytorch_lightning as pl
 from models.vmz.layers import ECA_3D
 from .resnet import Bottleneck
 
@@ -373,7 +373,19 @@ class PyramidResNet(nn.Module):
         if target != None:
             return x, None
         return x
+    def training_step(self, train_batch):
+        x, y = train_batch
+        y_hat = self.forward(x)
+        # print(y_hat.shape)
+        loss = F.cross_entropy(y_hat, y.squeeze(-1))
+        return y_hat, loss
 
+
+    def validation_step(self, train_batch):
+        x, y = train_batch
+        y_hat = self.forward(x)
+        loss = F.cross_entropy(y_hat, y.squeeze(-1))
+        return y_hat, loss
     def _make_layer(self, block, conv_builder, planes, blocks, stride=1):
         downsample = None
 

@@ -3,6 +3,9 @@ import torch
 import torch.nn as nn
 import timm
 import torch.nn.functional as F
+import pytorch_lightning as pl
+import pytorch_lightning as pl
+from base.base_model import BaseModel
 from einops import rearrange
 # model = timm.create_model('vit_base_patch16_224', pretrained=True, num_classes=311)
 # print(model)
@@ -15,7 +18,7 @@ from einops import rearrange
 # o = m(torch.randn(2, 3, 224, 224))
 # print(f'Unpooled shape: {o.shape}')
 
-class VitSLR(nn.Module):
+class VitSLR(BaseModel):
     def __init__(self):
 
         super(VitSLR, self).__init__()

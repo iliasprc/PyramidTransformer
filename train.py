@@ -13,12 +13,13 @@ import sys
 
 # import configargparse
 import numpy as np
+import pytorch_lightning
 import torch
 import torch.backends.cudnn as cudnn
 from omegaconf import OmegaConf
 from torch.utils.tensorboard import SummaryWriter
 
-from data_loader.dataset import data_generators,islr_datasets
+from data_loader.dataset import data_generators,ISLR_DataModule
 from models.model_utils import ISLR_video_encoder
 from models.model_utils import select_optimizer, load_checkpoint
 from trainer.trainer import Trainer
@@ -77,9 +78,10 @@ def main():
         torch.cuda.manual_seed(config.seed)
     cudnn.benchmark = True
     cudnn.deterministic = True
-    training_generator, val_generator, test_generator, classes ,id2w= islr_datasets(config)
+    datamodule = ISLR_DataModule(config)
+    datamodule.setup()
 
-    model = ISLR_video_encoder(config, len(classes))
+    model = ISLR_video_encoder(config, len(datamodule.classes))
 
     use_cuda = torch.cuda.is_available()
 
@@ -90,39 +92,10 @@ def main():
 
 
 
-    if (config.load):
-        #model.replace_logits(2000)
-        #model.fc = torch.nn.Linear(256,250)
-        model.replace_logits(311)
-        pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
-        #model.replace_logits(len(classes))
-        #model.fc = torch.nn.Linear(1024,len(classes))
-        model.fc = torch.nn.Linear(256, len(classes))
-
-    else:
-        pth_file = None
-    log.info(f'{model}')
-#    model.freeze_param()
-    if (config.cuda and use_cuda):
-        if torch.cuda.device_count() > 1:
-            log.info(f"Let's use {torch.cuda.device_count()} GPUs!")
-
-            model = torch.nn.DataParallel(model)
-    model.to(device)
+    trainer = pytorch_lightning.Trainer()
 
 
-    optimizer, scheduler = select_optimizer(model, config['model'], None)
-    #log.info(f'{model}')
-    log.info(f"Checkpoint Folder {cpkt_fol_name} ")
-    trainer = Trainer(config, model=model, optimizer=optimizer,
-                      data_loader=training_generator, writer=writer, logger=log,
-                      valid_data_loader=val_generator, test_data_loader=test_generator,
-                      lr_scheduler=scheduler,
-                      checkpoint_dir=cpkt_fol_name,id2w=id2w)
-
-
-
-    trainer.train()
+    trainer.fit(model,datamodule)
 
 
 if __name__ == '__main__':

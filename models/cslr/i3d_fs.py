@@ -2,22 +2,17 @@ import math
 import random
 
 import numpy as np
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.nn.functional as F
-from einops import repeat, rearrange
-from utils.ctcl import CTCL
-from omegaconf import OmegaConf
-from utils.loss import LabelSmoothingCrossEntropy
-from base.base_model import BaseModel
-from models.vmz.layers import BasicStem_Pool, SpatialModulation3D, Conv3DDepthwise, PositionalEncoding1D
-from models.vmz.layers1d import Conv1DDepthwise, BasicStem_Pool1D, Bottleneck1D
-from models.vmz.resnet import Bottleneck
-from models.gcn.model.decouple_gcn_attn import STGCN
-from models.transformers.transformer import TransformerEncoder
-
 from einops import rearrange
+from einops import repeat
+from base.base_model import BaseModel
+from models.transformers.transformer import TransformerEncoder
+from utils.ctcl import CTCL
+
+
 class MaxPool3dSamePadding(nn.MaxPool3d):
 
     def compute_pad(self, dim, s):
@@ -53,7 +48,7 @@ class MaxPool3dSamePadding(nn.MaxPool3d):
         return super(MaxPool3dSamePadding, self).forward(x)
 
 
-class Unit3D(nn.Module):
+class Unit3D(BaseModel):
 
     def __init__(self, in_channels,
                  output_channels,
@@ -128,7 +123,7 @@ class Unit3D(nn.Module):
         return x
 
 
-class InceptionModule(nn.Module):
+class InceptionModule(BaseModel):
     def __init__(self, in_channels, out_channels, name):
         super(InceptionModule, self).__init__()
 
@@ -156,7 +151,7 @@ class InceptionModule(nn.Module):
         return torch.cat([b0, b1, b2, b3], dim=1)
 
 
-class InceptionI3d(nn.Module):
+class InceptionI3d(BaseModel):
     """Inception-v1 I3D architecture.
     The model is introduced in:
         Quo Vadis, Action Recognition? A New Model and the Kinetics Dataset
@@ -225,8 +220,8 @@ class InceptionI3d(nn.Module):
         self._final_endpoint = final_endpoint
         self.logits = None
         self.temp_resolution = temporal_resolution
-        last_duration = int(math.ceil(16/ 8))
-        #if (self.mode == 'unfold' or self.mode == 'features'):
+        last_duration = int(math.ceil(16 / 8))
+        # if (self.mode == 'unfold' or self.mode == 'features'):
         self.window_size = 16
         self.stride = 8
         print("Train with sliding window size {} stride {}".format(self.window_size, self.stride))
@@ -312,7 +307,7 @@ class InceptionI3d(nn.Module):
         end_point = 'Logits'
         self.avg_pool = nn.AvgPool3d(kernel_size=[last_duration, 7, 7],
                                      stride=(1, 1, 1))
-        #self.avg_pool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        # self.avg_pool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.dropout = nn.Dropout(dropout_keep_prob)
 
         self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
@@ -322,20 +317,19 @@ class InceptionI3d(nn.Module):
                              use_batch_norm=False,
                              use_bias=True,
                              name='logits')
-        self.loss =  nn.CrossEntropyLoss()
+        self.loss = nn.CrossEntropyLoss()
 
         self.build()
         self.use_tr = False
         planes = 1024
-        max_tokens = 8+1
-        #self.pe = PositionalEncoding1D(dim = planes,max_tokens=max_tokens)
-
+        max_tokens = 8 + 1
+        # self.pe = PositionalEncoding1D(dim = planes,max_tokens=max_tokens)
 
         if self.use_tr:
             self.transformer_encoder = TransformerEncoder(dim=planes, blocks=2, heads=8, dim_head=64,
                                                           dim_linear_block=planes, dropout=0.1)
             self.use_cls_token = True
-            self.cls_token = nn.Parameter(torch.randn(1, planes ))
+            self.cls_token = nn.Parameter(torch.randn(1, planes))
             self.classifier = nn.Sequential(
                 nn.LayerNorm(planes),
                 nn.Linear(planes, self._num_classes)
@@ -346,10 +340,12 @@ class InceptionI3d(nn.Module):
                 hidden_size=512,
                 num_layers=2,
                 dropout=0.5,
-                bidirectional=True,batch_first=True)
-            self.fc1 = nn.Sequential(nn.Linear(1024,1024),nn.LeakyReLU(0.2))
-            self.fc2 = nn.Sequential(nn.Linear(1024,512),nn.LeakyReLU(0.2),nn.Linear(512,256),nn.LeakyReLU(0.2),nn.Dropout(0.1))
-            self.fc = nn.Linear(256,self._num_classes)
+                bidirectional=True, batch_first=True)
+            self.fc1 = nn.Sequential(nn.Linear(1024, 1024), nn.LeakyReLU(0.2))
+            self.fc2 = nn.Sequential(nn.Linear(1024, 512), nn.LeakyReLU(0.2), nn.Linear(512, 256), nn.LeakyReLU(0.2),
+                                     nn.Dropout(0.1))
+            self.fc = nn.Linear(256, self._num_classes)
+
     def replace_logits(self, num_classes):
         self._num_classes = num_classes
         self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
@@ -364,7 +360,7 @@ class InceptionI3d(nn.Module):
         for k in self.end_points.keys():
             self.add_module(k, self.end_points[k])
 
-    def forward(self, x , y=None):
+    def forward(self, x, y=None):
 
         if (self.mode == 'isolated'):
 
@@ -374,21 +370,21 @@ class InceptionI3d(nn.Module):
                     x = self._modules[end_point](x)  # use _modules to work with dataparallel
             if False:
                 y_hat = self.logits(self.dropout(self.avg_pool(x))).squeeze(-1).squeeze(-1).squeeze(-1)
-                #print(x.shape)
+                # print(x.shape)
                 if y != None:
                     loss_ctc = self.loss(y_hat, y.squeeze(-1))
                     return y_hat, loss_ctc
                 return y_hat
             if self.use_tr:
                 x = self.avg_pool(self.dropout(x)).squeeze(-1).squeeze(-1)
-                #print(x.shape)
+                # print(x.shape)
                 b = x.shape[0]
                 cls_token = repeat(self.cls_token, 'n c -> b n c', b=b)
-                #print(x.shape,cls_token.shape)
+                # print(x.shape,cls_token.shape)
                 x = rearrange(x, 'b c t -> b t c')
                 x = torch.cat((cls_token, x), dim=1)
                 x = self.transformer_encoder(x)
-                #print(x.shape)
+                # print(x.shape)
                 # x = rearrange(x, 'b t d -> t b d')
 
                 y_hat = self.classifier(x[:, 0, :])
@@ -397,23 +393,23 @@ class InceptionI3d(nn.Module):
                 x = rearrange(x, 'b c t -> b t c')
                 r_out, (h_n, h_c) = self.rnn(x)
                 x = r_out.mean(dim=1)
-                x1 = self.fc2(x+ self.fc1(x))
+                x1 = self.fc2(x + self.fc1(x))
 
                 y_hat = self.fc(x1)
-                #print(y_hat.shape,y.shape)
+                # print(y_hat.shape,y.shape)
             if y != None:
                 loss_ctc = self.loss(y_hat, y.squeeze(-1))
                 return y_hat, loss_ctc
             return y_hat
             return y_hat
         elif (self.mode == 'continuous'):
-            #print(x.shape)
-            self.window_size = random.randint(16,18)
-            self.stride = random.randint(self.window_size//2 +1,self.window_size-1)
+            # print(x.shape)
+            self.window_size = random.randint(16, 18)
+            self.stride = random.randint(self.window_size // 2 + 1, self.window_size - 1)
             x = x.unfold(2, self.window_size, self.stride).squeeze(0)
-            #print(x.shape)
+            # print(x.shape)
             x = rearrange(x, 'c n h w t -> n c t h w')
-            #print(x.shape)
+            # print(x.shape)
             with torch.no_grad():
                 for end_point in self.VALID_ENDPOINTS:
                     if end_point in self.end_points:
@@ -421,16 +417,15 @@ class InceptionI3d(nn.Module):
                         x = self._modules[end_point](x)  # use _modules to work with dataparallel
 
             x = self.dropout(self.avg_pool(x))
-            #print(f"feats {x.shape}")
+            # print(f"feats {x.shape}")
             return x
             # logits = self.logits(x)
             # print(x.size())
             final_time, dim, _, _, _ = x.size()
 
-
             y_hat = self.logits(x)
-            y_hat = rearrange(y_hat,'t classes d h w -> t (d h w) classes')
-            #print(y_hat.size())
+            y_hat = rearrange(y_hat, 't classes d h w -> t (d h w) classes')
+            # print(y_hat.size())
             if y != None:
                 loss_ctc = self.loss(y_hat, y)
                 return y_hat, loss_ctc
@@ -455,19 +450,21 @@ class InceptionI3d(nn.Module):
             if end_point in self.end_points:
                 x = self._modules[end_point](x)
         return self.dropout(self.avg_pool(x))
+
     def freeze_param(self):
         count = 0
-        for name,param in self.named_parameters():
+        for name, param in self.named_parameters():
 
             count += 1
 
-            if 'logits' in  name :
+            if 'logits' in name:
                 print(name)
                 param.requires_grad = True
             else:
-                param.requires_grad=False
+                param.requires_grad = False
 
-class InceptionI3d_Sentence(nn.Module):
+
+class InceptionI3d_Sentence(BaseModel):
     """Inception-v1 I3D architecture.
     The model is introduced in:
         Quo Vadis, Action Recognition? A New Model and the Kinetics Dataset
@@ -536,8 +533,8 @@ class InceptionI3d_Sentence(nn.Module):
         self._final_endpoint = final_endpoint
         self.logits = None
         self.temp_resolution = temporal_resolution
-        last_duration = int(math.ceil(16/ 8))
-        #if (self.mode == 'unfold' or self.mode == 'features'):
+        last_duration = int(math.ceil(16 / 8))
+        # if (self.mode == 'unfold' or self.mode == 'features'):
         self.window_size = 16
         self.stride = 8
         print("Train with sliding window size {} stride {}".format(self.window_size, self.stride))
@@ -623,7 +620,7 @@ class InceptionI3d_Sentence(nn.Module):
         end_point = 'Logits'
         self.avg_pool = nn.AvgPool3d(kernel_size=[last_duration, 7, 7],
                                      stride=(1, 1, 1))
-        #self.avg_pool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        # self.avg_pool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.dropout = nn.Dropout(dropout_keep_prob)
 
         self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
@@ -633,21 +630,20 @@ class InceptionI3d_Sentence(nn.Module):
                              use_batch_norm=False,
                              use_bias=True,
                              name='logits')
-        self.loss =  nn.CrossEntropyLoss()
+        self.loss = nn.CrossEntropyLoss()
         self.ctc_loss = CTCL()
 
         self.build()
         self.use_tr = False
         planes = 1024
-        max_tokens = 8+1
-        #self.pe = PositionalEncoding1D(dim = planes,max_tokens=max_tokens)
-
+        max_tokens = 8 + 1
+        # self.pe = PositionalEncoding1D(dim = planes,max_tokens=max_tokens)
 
         if self.use_tr:
             self.transformer_encoder = TransformerEncoder(dim=planes, blocks=2, heads=8, dim_head=64,
                                                           dim_linear_block=planes, dropout=0.1)
             self.use_cls_token = True
-            self.cls_token = nn.Parameter(torch.randn(1, planes ))
+            self.cls_token = nn.Parameter(torch.randn(1, planes))
             self.classifier = nn.Sequential(
                 nn.LayerNorm(planes),
                 nn.Linear(planes, self._num_classes)
@@ -658,14 +654,15 @@ class InceptionI3d_Sentence(nn.Module):
                 hidden_size=512,
                 num_layers=2,
                 dropout=0.5,
-                bidirectional=True,batch_first=True)
+                bidirectional=True, batch_first=True)
             # self.fc1 = nn.Sequential(nn.Linear(1024,1024),nn.LeakyReLU(0.2))
             # self.fc2 = nn.Sequential(nn.Linear(1024,512),nn.LeakyReLU(0.2),nn.Linear(512,256),nn.LeakyReLU(0.2),nn.Dropout(0.1))
             # self.fc = nn.Linear(256,self._num_classes)
             # self.fc1 = nn.Sequential(nn.Linear(1024,1024),nn.LeakyReLU(0.2))
             # self.fc2 = nn.Sequential(nn.Linear(1024,512),nn.LeakyReLU(0.2),nn.Linear(512,256),nn.LeakyReLU(0.2),nn.Dropout(0.1))
-            self.fc_gloss = nn.Linear(1024,311)
+            self.fc_gloss = nn.Linear(1024, 311)
             self.fc_sentence = nn.Linear(1024, 228)
+
     def replace_logits(self, num_classes):
         self._num_classes = num_classes
         self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
@@ -680,8 +677,7 @@ class InceptionI3d_Sentence(nn.Module):
         for k in self.end_points.keys():
             self.add_module(k, self.end_points[k])
 
-    def forward(self, x , y=None,y_g=None):
-
+    def forward(self, x, y=None, y_g=None):
 
         with torch.no_grad():
             for end_point in self.VALID_ENDPOINTS:
@@ -691,19 +687,19 @@ class InceptionI3d_Sentence(nn.Module):
 
         if self.use_tr:
             x = self.avg_pool(self.dropout(x)).squeeze(-1).squeeze(-1)
-            #print(x.shape)
+            # print(x.shape)
             b = x.shape[0]
             cls_token = repeat(self.cls_token, 'n c -> b n c', b=b)
-            #print(x.shape,cls_token.shape)
+            # print(x.shape,cls_token.shape)
             x = rearrange(x, 'b c t -> b t c')
             x = torch.cat((cls_token, x), dim=1)
             x = self.transformer_encoder(x)
-            #print(x.shape)
+            # print(x.shape)
             # x = rearrange(x, 'b t d -> t b d')
 
             y_hat = self.classifier(x[:, 0, :])
         else:
-            #with torch.no_grad():
+            # with torch.no_grad():
             x = self.dropout(self.avg_pool(x)).squeeze(-1).squeeze(-1)
             x = rearrange(x, 'b c t -> b t c')
             r_out, (h_n, h_c) = self.rnn(x)
@@ -711,13 +707,13 @@ class InceptionI3d_Sentence(nn.Module):
             x = r_out.mean(dim=1)
             y_hat = self.fc_sentence(x)
 
-           # y_hat = self.fc(x1)
-        #print(y_g.shape,y_gloss.shape)
+        # y_hat = self.fc(x1)
+        # print(y_g.shape,y_gloss.shape)
 
         if y != None:
             loss_ = self.loss(y_hat, y.squeeze(-1))
-            loss_ctc = self.ctc_loss(y_gloss,y_g)
-            return y_hat,y_gloss, loss_+loss_ctc
+            loss_ctc = self.ctc_loss(y_gloss, y_g)
+            return y_hat, y_gloss, loss_ + loss_ctc
         return y_hat
         return y_hat
 
@@ -726,10 +722,8 @@ class InceptionI3d_Sentence(nn.Module):
             if end_point in self.end_points:
                 x = self._modules[end_point](x)
         return self.dropout(self.avg_pool(x))
+
     def freeze_param(self):
         count = 0
-        for name,param in self.named_parameters():
-
+        for name, param in self.named_parameters():
             count += 1
-
-

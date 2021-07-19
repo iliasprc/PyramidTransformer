@@ -1,13 +1,13 @@
 import warnings
 
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from models.cslr.layers import BasicStem, BasicStem_Pool, SpatialModulation, Conv3DDepthwise, Bottleneck,ECA_3D
-from utils.ctcl import CTCL
 from einops import rearrange
-
+from base.base_model import BaseModel
+from models.cslr.layers import BasicStem, BasicStem_Pool, SpatialModulation, Conv3DDepthwise, Bottleneck, ECA_3D
+from utils.ctcl import CTCL
 
 model_urls = {
     "r2plus1d_34_8_ig65m": "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch-9bae36ae.pth",
@@ -36,7 +36,7 @@ model_urls = {
 }
 
 
-class CSLR_PyramidTransformerResNet(nn.Module):
+class CSLR_PyramidTransformerResNet(BaseModel):
 
     def __init__(self, block, conv_makers, layers,
                  stem, num_classes=400,
@@ -44,10 +44,10 @@ class CSLR_PyramidTransformerResNet(nn.Module):
         """Generic resnet video generator.
 
         Args:
-            block (nn.Module): resnet building block
+            block (pl.LightningModule): resnet building block
             conv_makers (list(functions)): generator function for each layer
             layers (List[int]): number of blocks per layer
-            stem (nn.Module, optional): Resnet stem, if None, defaults to conv-bn-relu. Defaults to None.
+            stem (pl.LightningModule, optional): Resnet stem, if None, defaults to conv-bn-relu. Defaults to None.
             num_classes (int, optional): Dimension of the final FC layer. Defaults to 400.
             zero_init_residual (bool, optional): Zero init bottleneck residual BN. Defaults to False.
         """
@@ -66,9 +66,7 @@ class CSLR_PyramidTransformerResNet(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
 
-
-
-        #self.tpn3 = SpatialModulation(256 * block.expansion, downsample_scale=16, k=3, s=1, d=2)
+        # self.tpn3 = SpatialModulation(256 * block.expansion, downsample_scale=16, k=3, s=1, d=2)
 
         self.tpn4 = SpatialModulation(512 * block.expansion, downsample_scale=8, k=1, s=1, d=1)
 
@@ -85,11 +83,11 @@ class CSLR_PyramidTransformerResNet(nn.Module):
                 if isinstance(m, Bottleneck):
                     nn.init.constant_(m.bn3.weight, 0)
 
-    def forward(self, x, y=None):
-        #print(x.shape)
+    def forward(self, x):
+        # print(x.shape)
         x = x.unfold(2, self.window_size, self.stride).squeeze(0)
-        x = rearrange(x,'c t h w n -> n c t h w')
-        #print(x.shape)
+        x = rearrange(x, 'c t h w n -> n c t h w')
+        # print(x.shape)
         with torch.no_grad():
             x = self.stem(x)
 
@@ -97,18 +95,15 @@ class CSLR_PyramidTransformerResNet(nn.Module):
             x = self.layer2(x)
             x = self.layer3(x)
 
-        #tpn3 = self.tpn3(x)  # + tpn2
+        # tpn3 = self.tpn3(x)  # + tpn2
         with torch.no_grad():
             x = self.layer4(x)
         tpn4 = self.tpn4(x)  # + tpn3
 
-
-        x_new = tpn4#torch.cat((tpn3, tpn4), dim=-1)
-        #print(x_new.shape)
+        x_new = tpn4  # torch.cat((tpn3, tpn4), dim=-1)
+        # print(x_new.shape)
         y_hat = self.fc(x_new)
-        if y!=None:
-            loss_ctc = self.loss(y_hat,y)
-            return y_hat,loss_ctc
+
         return y_hat
 
     def training_step(self, train_batch):
@@ -157,14 +152,16 @@ class CSLR_PyramidTransformerResNet(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-    def replace_logits(self,n_classes):
+
+    def replace_logits(self, n_classes):
         self.fc = nn.Linear(2048, n_classes)
         nn.init.normal_(self.fc.weight, 0, 0.01)
         if self.fc.bias is not None:
             nn.init.constant_(self.fc.bias, 0)
 
 
-def cslr_ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=False, progress=False, num_classes=226, **kwargs):
+def cslr_ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=False, progress=False, num_classes=226,
+                                **kwargs):
     avail_pretrainings = [
         "ig65m_32frms",
         "ig_ft_kinetics_32frms",
@@ -185,7 +182,8 @@ def cslr_ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=False, pr
             pretrained = False
     use_pool1 = True
     model = CSLR_PyramidTransformerResNet(block=Bottleneck, conv_makers=[Conv3DDepthwise] * 4, layers=[3, 8, 36, 3],
-                                     stem=BasicStem_Pool if use_pool1 else BasicStem, num_classes=num_classes, **kwargs)
+                                          stem=BasicStem_Pool if use_pool1 else BasicStem, num_classes=num_classes,
+                                          **kwargs)
 
     # We need exact Caffe2 momentum for BatchNorm scaling
     for m in model.modules():

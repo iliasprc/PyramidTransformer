@@ -1,66 +1,68 @@
 import warnings
 
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from models.transformers.timesformer import Timesformer
-from models.vmz.layers import BasicStem, BasicStem_Pool, SpatialModulation3D, Conv3DDepthwise, Bottleneck, ECA_3D
 from einops import rearrange
+from base.base_model import BaseModel
+from models.transformers.timesformer import Timesformer
+from models.vmz.layers import BasicStem, BasicStem_Pool, SpatialModulation3D, Conv3DDepthwise, Bottleneck
+
 model_urls = {
-    "r2plus1d_34_8_ig65m"                     :
+    "r2plus1d_34_8_ig65m":
         "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip8_ig65m_from_scratch"
         "-9bae36ae.pth",
     # noqa: E501
-    "r2plus1d_34_32_ig65m"                    :
+    "r2plus1d_34_32_ig65m":
         "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip32_ig65m_from_scratch"
         "-449a7af9.pth",
     # noqa: E501
-    "r2plus1d_34_8_kinetics"                  :
+    "r2plus1d_34_8_kinetics":
         "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0"
         "/r2plus1d_34_clip8_ft_kinetics_from_ig65m-0aa0550b.pth",
     # noqa: E501
-    "r2plus1d_34_32_kinetics"                 :
+    "r2plus1d_34_32_kinetics":
         "https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0"
         "/r2plus1d_34_clip32_ft_kinetics_from_ig65m-ade133f1.pth",
     # noqa: E501
-    "r2plus1d_152_ig65m_32frms"               :
+    "r2plus1d_152_ig65m_32frms":
         "https://github.com/bjuncek/VMZ/releases/download/test_models/r2plus1d_152_ig65m_from_scratch_f106380637.pth",
-    "r2plus1d_152_ig_ft_kinetics_32frms"      :
+    "r2plus1d_152_ig_ft_kinetics_32frms":
         "https://github.com/bjuncek/VMZ/releases/download/test_models/r2plus1d_152_ft_kinetics_from_ig65m_f107107466"
         ".pth",
-    "r2plus1d_152_sports1m_32frms"            : "",
+    "r2plus1d_152_sports1m_32frms": "",
     "r2plus1d_152_sports1m_ft_kinetics_32frms":
         "https://github.com/bjuncek/VMZ/releases/download/test_models"
         "/r2plus1d_152_ft_kinetics_from_sports1m_f128957437.pth",
-    "ir_csn_152_ig65m_32frms"                 :
+    "ir_csn_152_ig65m_32frms":
         "https://github.com/bjuncek/VMZ/releases/download/test_models/irCSN_152_ig65m_from_scratch_f125286141.pth",
-    "ir_csn_152_ig_ft_kinetics_32frms"        :
+    "ir_csn_152_ig_ft_kinetics_32frms":
         "https://github.com/bjuncek/VMZ/releases/download/test_models/irCSN_152_ft_kinetics_from_ig65m_f126851907.pth",
-    "ir_csn_152_sports1m_32frms"              :
+    "ir_csn_152_sports1m_32frms":
         "https://github.com/bjuncek/VMZ/releases/download/test_models/irCSN_152_Sports1M_from_scratch_f99918785.pth",
-    "ir_csn_152_sports1m_ft_kinetics_32frms"  :
+    "ir_csn_152_sports1m_ft_kinetics_32frms":
         "https://github.com/bjuncek/VMZ/releases/download/test_models/irCSN_152_ft_kinetics_from_Sports1M_f101599884"
         ".pth",
-    "ip_csn_152_ig65m_32frms"                 :
+    "ip_csn_152_ig65m_32frms":
         "https://github.com/bjuncek/VMZ/releases/download/test_models/ipCSN_152_ig65m_from_scratch_f130601052.pth",
-    "ip_csn_152_ig_ft_kinetics_32frms"        :
+    "ip_csn_152_ig_ft_kinetics_32frms":
         "https://github.com/bjuncek/VMZ/releases/download/test_models/ipCSN_152_ft_kinetics_from_ig65m_f133090949.pth",
-    "ip_csn_152_sports1m_32frms"              :
+    "ip_csn_152_sports1m_32frms":
         "https://github.com/bjuncek/VMZ/releases/download/test_models/ipCSN_152_Sports1M_from_scratch_f111018543.pth",
-    "ip_csn_152_sports1m_ft_kinetics_32frms"  :
+    "ip_csn_152_sports1m_ft_kinetics_32frms":
         "https://github.com/bjuncek/VMZ/releases/download/test_models/ipCSN_152_ft_kinetics_from_Sports1M_f111279053"
         ".pth",
-    'r3d_18'                                  : 'https://download.pytorch.org/models/r3d_18-b3b3357e.pth',
-    'mc3_18'                                  : 'https://download.pytorch.org/models/mc3_18-a90a0ba3.pth',
-    'r2plus1d_18'                             : 'https://download.pytorch.org/models/r2plus1d_18-91a641e6.pth',
+    'r3d_18': 'https://download.pytorch.org/models/r3d_18-b3b3357e.pth',
+    'mc3_18': 'https://download.pytorch.org/models/mc3_18-a90a0ba3.pth',
+    'r2plus1d_18': 'https://download.pytorch.org/models/r2plus1d_18-91a641e6.pth',
 }
 
 
 # from timesformer_pytorch import TimeSformer
 
 
-class PyramidTransformerResNet(nn.Module):
+class PyramidTransformerResNet(BaseModel):
 
     def __init__(self, block, conv_makers, layers,
                  stem, num_classes=400,
@@ -94,13 +96,13 @@ class PyramidTransformerResNet(nn.Module):
 
         # self.tpn2 = SpatialModulation(128 * block.expansion,128 * block.expansion, downsample_scale=32, k=5, s=2, d=4)
 
-        #self.tpn3 = SpatialModulation3D(256 * block.expansion, downsample_scale=16, k=3, s=1, d=2)
+        # self.tpn3 = SpatialModulation3D(256 * block.expansion, downsample_scale=16, k=3, s=1, d=2)
 
         self.tpn4 = SpatialModulation3D(512 * block.expansion, downsample_scale=8, k=1, s=1, d=1)
         #
         # # self.fc = nn.Linear(512 * block.expansion, num_classes)
         # self.eca = ECA_3D(k_size=11)
-        self.fc = nn.Linear(( 256) * 4, 226)
+        self.fc = nn.Linear((256) * 4, 226)
 
         # init weights
         self._initialize_weights()
@@ -125,16 +127,16 @@ class PyramidTransformerResNet(nn.Module):
 
         # with torch.no_grad():
         x = self.layer3(x)
-        #tpn3 = self.tpn3(x)  # + tpn2
+        # tpn3 = self.tpn3(x)  # + tpn2
         # print(f'layer 3 {x.shape} {tpn3.shape}')
         # with torch.no_grad():
         x = self.layer4(x)
         tpn4 = self.tpn4(x)  # + tpn3
         # # print(f'layer 4 {x.shape}  {tpn4.shape}')
 
-        x_new = tpn4#torch.cat((tpn3, tpn4), dim=-1)
+        x_new = tpn4  # torch.cat((tpn3, tpn4), dim=-1)
 
-        y_hat = x_new#self.fc(x_new)
+        y_hat = x_new  # self.fc(x_new)
         if y == None:
             return y_hat
         loss = F.cross_entropy(y_hat, y.squeeze(-1))
@@ -234,7 +236,7 @@ def ir_csn_152_transformer(pretraining="ig65m_32frms", pretrained=True, progress
     return model
 
 
-class TimesformerResNet(nn.Module):
+class TimesformerResNet(BaseModel):
 
     def __init__(self, block, conv_makers, layers,
                  stem, num_classes=400,
@@ -261,7 +263,6 @@ class TimesformerResNet(nn.Module):
         self.layer3 = self._make_layer(block, conv_makers[2], 256, layers[2], stride=2)
 
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
-
 
         self.tpn3 = Timesformer(
             img_dim=14, frames=8,
@@ -300,12 +301,11 @@ class TimesformerResNet(nn.Module):
 
         # with torch.no_grad():
         x = self.layer3(x)
-        #print(x.shape)
-        x = rearrange(x,'b c f h w -> b f c h w')
+        # print(x.shape)
+        x = rearrange(x, 'b c f h w -> b f c h w')
         y_hat = self.tpn3(x)  # + tpn2
         # print(f'layer 3 {x.shape} {tpn3.shape}')
         # with torch.no_grad():
-
 
         if y == None:
             return y_hat

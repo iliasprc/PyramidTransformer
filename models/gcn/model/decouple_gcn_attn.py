@@ -1,4 +1,3 @@
-import numpy as np
 import math
 
 import numpy as np
@@ -6,35 +5,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import repeat, rearrange
-
+from base.base_model import BaseModel
 from models.gcn.graph.sign_27 import Graph
 from models.gcn.model.dropSke import DropBlock_Ske
 from models.gcn.model.dropT import DropBlockT_1d
+from models.vmz.layers import PositionalEncoding1D
 
 
 def expand_to_batch(tensor, desired_size):
     tile = desired_size // tensor.shape[0]
     return repeat(tensor, 'b ... -> (b tile) ...', tile=tile)
-
-
-class PositionalEncoding1D(nn.Module):
-
-    def __init__(self, dim, dropout=0.1, max_tokens=216):
-        super(PositionalEncoding1D, self).__init__()
-        self.dropout = nn.Dropout(p=dropout)
-
-        pe = torch.zeros(1, max_tokens, dim)
-        position = torch.arange(0, max_tokens, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, dim, 2).float() * (-torch.log(torch.Tensor([10000.0])) / dim))
-        pe[..., 0::2] = torch.sin(position * div_term)
-        pe[..., 1::2] = torch.cos(position * div_term)
-        # pe = pe.unsqueeze(0).transpose(0, 1)
-        self.pe = pe.cuda()
-
-    def forward(self, x):
-        batch, seq_tokens, _ = x.size()
-        x = x + expand_to_batch(self.pe[:, :seq_tokens, :], desired_size=batch)
-        return self.dropout(x)
 
 
 def import_class(name):
@@ -255,8 +235,10 @@ class TCN_GCN_unit(nn.Module):
 from omegaconf import OmegaConf
 import os
 
+import pytorch_lightning as pl
 
-class STGCN(nn.Module):
+
+class STGCN(BaseModel):
     def __init__(self, config, num_class=226, in_channels=3):
         super(STGCN, self).__init__()
         model_config = OmegaConf.load(os.path.join(config.cwd, 'models/gcn/model/model.yml'))
@@ -287,7 +269,7 @@ class STGCN(nn.Module):
                                num_point, block_size, stride=2)
         self.l9 = TCN_GCN_unit(256, 256, A, groups, num_point, block_size)
         self.l10 = TCN_GCN_unit(256, 256, A, groups, num_point, block_size)
-        self.decoder = nn.Linear(256*27,1024)
+        self.decoder = nn.Linear(256 * 27, 1024)
         self.fc = nn.Linear(256, num_class)
         nn.init.normal(self.fc.weight, 0, math.sqrt(2. / num_class))
         bn_init(self.data_bn, 1)
@@ -317,26 +299,35 @@ class STGCN(nn.Module):
         # N*M,C,T,V
         c_new = x.size(1)
 
-        #print('before eshape ',x.size())
+        # print('before eshape ',x.size())
         # print(N, M, c_new)
-        if False:
-            # x = x.view(N, M, c_new, -1)
-            x = x.reshape(N, M, c_new, -1)
-            print('Before mean ',x.shape)
-            x = x.mean(3).mean(1)
-            print('after mean ', x.shape)
-            y_hat = self.fc(x)
-            if y != None:
-                loss = F.cross_entropy(y_hat, y.squeeze(-1))
-                return y_hat, loss
-            return y_hat
 
-        else:
-            x = rearrange(self.decoder(rearrange(x,'b c t v -> b t (c v)')),' b t c -> b c t')
-            return x
+        # x = x.view(N, M, c_new, -1)
+        x = x.reshape(N, M, c_new, -1)
+        print('Before mean ', x.shape)
+        x = x.mean(3).mean(1)
+        print('after mean ', x.shape)
+        y_hat = self.fc(x)
+        return y_hat
+
+    def training_step(self, train_batch):
+        x, y = train_batch
+        y_hat = self.forward(x)
+        # print(y_hat.shape)
+        loss = F.cross_entropy(y_hat, y.squeeze(-1))
+        return y_hat, loss
+
+    def validation_step(self, train_batch):
+        x, y = train_batch
+        y_hat = self.forward(x)
+        loss = F.cross_entropy(y_hat, y.squeeze(-1))
+        return y_hat, loss
+        # else:
+        #     x = rearrange(self.decoder(rearrange(x,'b c t v -> b t (c v)')),' b t c -> b c t')
+        #     return x
 
 
-class STGCN_Transformer(nn.Module):
+class STGCN_Transformer(BaseModel):
     def __init__(self, config, num_class=226, in_channels=3):
         super(STGCN_Transformer, self).__init__()
         model_config = OmegaConf.load(os.path.join(config.cwd, 'models/gcn/model/model.yml'))
@@ -383,7 +374,7 @@ class STGCN_Transformer(nn.Module):
             )
         else:
             self.fc = nn.Linear(256, num_class)
-        #nn.init.normal(self.fc.weight, 0, math.sqrt(2. / num_class))
+        # nn.init.normal(self.fc.weight, 0, math.sqrt(2. / num_class))
         bn_init(self.data_bn, 1)
 
     def forward(self, x, y=None, keep_prob=0.9):
@@ -416,29 +407,42 @@ class STGCN_Transformer(nn.Module):
 
         # x = x.view(N, M, c_new, -1)
         x = x.reshape(N, M, c_new, -1)
-        #print(x.shape)
+        # print(x.shape)
         b = x.shape[0]
         x = rearrange(x, 'b m c t -> b t (c m)')
         x = self.pe(x)
 
-        #print(x.shape)
-        #print(x.shape)
-        #x = rearrange(x, 'b c t h w -> (t h w) b c')
+        # print(x.shape)
+        # print(x.shape)
+        # x = rearrange(x, 'b c t h w -> (t h w) b c')
 
-        #if self.use_cls_token:
+        # if self.use_cls_token:
         cls_token = repeat(self.cls_token, 'n d -> b n d', b=b)
-        #print(cls_token.shape,x.shape)
+        # print(cls_token.shape,x.shape)
         x = torch.cat((cls_token, x), dim=1)
-        #print(x.shape)
-        #x= rearrange(x,'b t d -> t b d')
+        # print(x.shape)
+        # x= rearrange(x,'b t d -> t b d')
         x = rearrange(x, 'b t c -> t b c')
         x = self.transformer_encoder(x)
-        #print(x.shape,x[0].shape)
+        # print(x.shape,x[0].shape)
         cls_token = x[0]
         y_hat = self.fc(cls_token)
-        #x = x.mean(3).mean(1)
-        #y_hat = self.fc(x)
+        # x = x.mean(3).mean(1)
+        # y_hat = self.fc(x)
         if y != None:
             loss = F.cross_entropy(y_hat, y.squeeze(-1))
             return y_hat, loss
         return y_hat
+
+    def training_step(self, train_batch):
+        x, y = train_batch
+        y_hat = self.forward(x)
+        # print(y_hat.shape)
+        loss = F.cross_entropy(y_hat, y.squeeze(-1))
+        return y_hat, loss
+
+    def validation_step(self, train_batch):
+        x, y = train_batch
+        y_hat = self.forward(x)
+        loss = F.cross_entropy(y_hat, y.squeeze(-1))
+        return y_hat, loss
