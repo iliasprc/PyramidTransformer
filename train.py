@@ -17,12 +17,11 @@ import pytorch_lightning
 import torch
 import torch.backends.cudnn as cudnn
 from omegaconf import OmegaConf
+from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.tensorboard import SummaryWriter
 
-from data_loader.dataset import data_generators,ISLR_DataModule
+from data_loader.dataset import ISLR_DataModule
 from models.model_utils import ISLR_video_encoder
-from models.model_utils import select_optimizer, load_checkpoint
-from trainer.trainer import Trainer
 from utils.logger import Logger
 from utils.util import arguments, getopts
 
@@ -51,12 +50,14 @@ def main():
 
     dt_string = now.strftime("%d_%m_%Y_%H.%M.%S")
     cpkt_fol_name = os.path.join(config.cwd,
-                                 'checkpoints/model_' + config.model.name + '/dataset_' + config.dataset.name + '/date_' + dt_string)
+                                 'checkpoints/model_' + config.model.name + '/dataset_' + config.dataset.name +
+                                 '/date_' + dt_string)
 
     log = Logger(path=cpkt_fol_name, name=config.logger).get_logger()
 
     writer_path = os.path.join(config.cwd,
-                               'checkpoints/model_' + config.model.name + '/dataset_' + config.dataset.name + '/date_' + dt_string + '/runs/')
+                               'checkpoints/model_' + config.model.name + '/dataset_' + config.dataset.name +
+                               '/date_' + dt_string + '/runs/')
     # os.path.join(config.cwd,
     # 'runs/model_' + config.model.name + '/dataset_' + config.dataset.name + '/date_' + dt_string)
 
@@ -64,7 +65,7 @@ def main():
     shutil.copy(os.path.join(config.cwd, config_file), cpkt_fol_name)
 
     # log.info("date and time =", dt_string)
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'#str(config.gpu)
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # str(config.gpu)
     log.info(f'pyTorch VERSION:{torch.__version__}', )
     log.info(f'CUDA VERSION')
 
@@ -87,15 +88,15 @@ def main():
 
     device = torch.device("cuda" if use_cuda else "cpu")
     log.info(f'device: {device}')
+    log.info(f'{model}')
 
+    from pytorch_lightning.callbacks import GPUStatsMonitor,ModelCheckpoint
+    gpu_stats = GPUStatsMonitor()
+    checkpoint_callback = ModelCheckpoint(dirpath=cpkt_fol_name,verbose=True,monitor='valid_loss_epoch')
+    trainer = pytorch_lightning.Trainer(gpus=1, logger=TensorBoardLogger(save_dir=writer_path),accumulate_grad_batches=4,
+                                        stochastic_weight_avg=True,callbacks=[gpu_stats,checkpoint_callback])
 
-
-
-
-    trainer = pytorch_lightning.Trainer()
-
-
-    trainer.fit(model,datamodule)
+    trainer.fit(model, datamodule)
 
 
 if __name__ == '__main__':

@@ -3,15 +3,15 @@ trainer_cslr:
   logger: CSLR # logger name
   epochs: 30 # number of training epochs
   seed: 1234 # randomness seed
-  cuda: True # use nvidia gpu
-  gpu: 0,1 # id of gpu
-  save: True # save checkpoint
+  cuda: True  # use nvidia gpu
+  gpu: 0 # id of gpu
+  save: True # swave checkpoint
   load: True # load pretrained checkpoint
-  gradient_accumulation: w # gradient accumulation steps
-  pretrained_cpkt: /home/iliask/PycharmProjects/SLVTP/checkpoints/model_I3D/i3d_wasl_gsl_.pth
+  gradient_accumulation: 2 # gradient accumulation steps
+  pretrained_cpkt: /home/iliask/PycharmProjects/SLVTP/checkpoints/model_ISL_cnn/dataset_GSL_ISO/date_22_07_2021_18.32.39/epoch=4-step=10939.ckpt
   log_interval: 1000 # print statistics every log_interval
   model:
-    name: I3D # model name
+    name: CSLR_2dcnntcl # model name
     optimizer: # optimizer configuration
       type: Adam # optimizer type
       lr: 1e-4 # learning rate
@@ -37,7 +37,7 @@ trainer_cslr:
       num_workers: 2
   dataset:
     input_data: /home/iliask/Desktop/ilias/datasets/
-    name: GSL_SI # dataset name
+    name: GSL_SI2 # dataset name
     modality: RGB # type of modality
     classes: 311 # number of classes
     normalize: True # mean, std normalization

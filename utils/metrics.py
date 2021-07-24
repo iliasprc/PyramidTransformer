@@ -183,9 +183,105 @@ def wer_generic(ref, hyp, debug=False):
     return wer_result, numCor, numSub, numIns, numDel
 
 
+def word_error_rate(ref, hyp, debug=False):
+    r = ref
+    h = hyp
+    # print(r,h)
+    # costs will holds the costs, like in the Levenshtein distance algorithm
+    costs = [[0 for inner in range(len(h) + 1)] for outer in range(len(r) + 1)]
+    # backtrace will hold the operations we've done.
+    # so we could later backtrace, like the WER algorithm requires us to.
+    backtrace = [[0 for inner in range(len(h) + 1)] for outer in range(len(r) + 1)]
+
+    OP_OK = 0
+    OP_SUB = 1
+    OP_INS = 2
+    OP_DEL = 3
+
+    # First column represents the case where we achieve zero
+    # hypothesis words by deleting all reference words.
+    for i in range(1, len(r) + 1):
+        costs[i][0] = DEL_PENALTY * i
+        backtrace[i][0] = OP_DEL
+
+    # First row represents the case where we achieve the hypothesis
+    # by inserting all hypothesis words into a zero-length reference.
+    for j in range(1, len(h) + 1):
+        costs[0][j] = INS_PENALTY * j
+        backtrace[0][j] = OP_INS
+
+    # computation
+    for i in range(1, len(r) + 1):
+        for j in range(1, len(h) + 1):
+            if r[i - 1] == h[j - 1]:
+                costs[i][j] = costs[i - 1][j - 1]
+                backtrace[i][j] = OP_OK
+            else:
+                substitutionCost = costs[i - 1][j - 1] + SUB_PENALTY  # penalty is always 1
+                insertionCost = costs[i][j - 1] + INS_PENALTY  # penalty is always 1
+                deletionCost = costs[i - 1][j] + DEL_PENALTY  # penalty is always 1
+
+                costs[i][j] = min(substitutionCost, insertionCost, deletionCost)
+                if costs[i][j] == substitutionCost:
+                    backtrace[i][j] = OP_SUB
+                elif costs[i][j] == insertionCost:
+                    backtrace[i][j] = OP_INS
+                else:
+                    backtrace[i][j] = OP_DEL
+
+    # back trace though the best route:
+    i = len(r)
+    j = len(h)
+    numSub = 0
+    numDel = 0
+    numIns = 0
+    numCor = 0
+    if debug:
+        print("OP\tREF\tHYP")
+        lines = []
+    while i > 0 or j > 0:
+        if backtrace[i][j] == OP_OK:
+            numCor += 1
+            i -= 1
+            j -= 1
+            if debug:
+                lines.append("OK\t" + r[i] + "\t" + h[j])
+        elif backtrace[i][j] == OP_SUB:
+            numSub += 1
+            i -= 1
+            j -= 1
+            if debug:
+                lines.append("SUB\t" + r[i] + "\t" + h[j])
+        elif backtrace[i][j] == OP_INS:
+            numIns += 1
+            j -= 1
+            if debug:
+                lines.append("INS\t" + "****" + "\t" + h[j])
+        elif backtrace[i][j] == OP_DEL:
+            numDel += 1
+            i -= 1
+            if debug:
+                lines.append("DEL\t" + r[i] + "\t" + "****")
+    if debug:
+        lines = reversed(lines)
+        for line in lines:
+            print(line)
+        print("#cor " + str(numCor))
+        print("#sub " + str(numSub))
+        print("#del " + str(numDel))
+        print("#ins " + str(numIns))
+    # return (numSub + numDel + numIns) / (float) (len(r))
+    if len(r) ==0:
+        r = [0]
+    wer_result = (numSub + numDel + numIns) / (float)(len(r))
+
+    return wer_result, numCor, numSub, numIns, numDel
+
 def word_error_rate_generic(output, target, id2w):
-    probs = torch.nn.functional.softmax(output, dim=2)
-    pred = probs.argmax(dim=2, keepdim=True).squeeze(1).squeeze(1).detach().cpu().numpy()
+    decoded_labels = ctc_argmax_decode(output,target)
+    #print(target)
+    probs = torch.nn.functional.softmax(output, dim=-1)
+    pred = probs.argmax(dim=-1, keepdim=True).squeeze(1).squeeze(1).detach().cpu().numpy()
     ref = ''
     refs = target.squeeze().cpu().numpy()
     if (target.size(1) == 1):
@@ -196,8 +292,15 @@ def word_error_rate_generic(output, target, id2w):
             ref += id2w[refs[i]] + ' '
 
     sentence = ''
-    sentence = greedy_decode(id2w, pred, output.size(0), ' ')
-    temp_wer, C, S, I, D = wer_generic(ref, sentence)
+    sentence,labels = greedy_decode(id2w, pred, output.size(0), ' ')
+    #print(decoded_labels,'\n',labels)
+    #print(decoded_labels, '\n', labels)
+    #print(len(decoded_labels), '\n', len(labels))
+    #print(decoded_labels==labels)
+    #temp_wer, C, S, I, D = wer_generic(ref, sentence)
+    #print(target.squeeze(0).cpu().tolist())
+    temp_wer, C, S, I, D = word_error_rate(target.squeeze(0).cpu().tolist(), decoded_labels)
+    #print(temp_wer,temp_wer1)
     temp_wer = min(1, temp_wer)
 
     return temp_wer, sentence, C, S, I, D
@@ -224,9 +327,6 @@ def wer_alignment(output, target, id2w):
     return label_of_out, temp_wer, sentence, C, S, I, D
 
 
-
-
-
 def accuracyv1(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
     maxk = max(topk)
@@ -248,7 +348,7 @@ def binary_accuracy(output, target):
     # print("Pred {:2f} , Target {:2f}".format(output.item(),target))
     # print(output.shape,target.shape)
 
-    output = torch.sigmoid(output.view(-1))
+    output = torch.sigmoid(output)
     pred = output > 0.5
     truth = target > 0.5
     # print("Pred {} , Target {}".format(pred.item(),truth.item()))
@@ -260,9 +360,10 @@ def greedy_decode(id2w, pred, seq_len, sep=' '):
     prev_found_word = ''
     prev = ''
     decoded_labels = ''
-
+    labels = []
     for i in range(seq_len):
         # current label
+        # print(pred[i])
         temp = id2w[pred[i]]
 
         if (temp != 'blank'):
@@ -273,6 +374,115 @@ def greedy_decode(id2w, pred, seq_len, sep=' '):
                     # check if previous word equals new word
 
                     decoded_labels += temp + sep
+                    labels.append(pred[i])
                 prev_found_word = temp
         prev = temp
+    return decoded_labels,labels
+
+
+def ctc_argmax_decode1(output, target, blank_label_index=0):
+    assert len(output.shape) == 3
+    probs = torch.nn.functional.softmax(output, dim=2)
+    pred = probs.argmax(dim=2).squeeze(1)
+    print(pred)
+    no_blanks_probs = probs[pred != blank_label_index]
+    if no_blanks_probs.nelement() == 0:
+        no_blanks_probs = probs[-1, :, :].unsqueeze(0)
+
+    new_pred = no_blanks_probs.argmax(dim=2).squeeze(1)
+
+    decoded_labels = no_blanks_probs[0].unsqueeze(0)
+    prev_found_word = new_pred[0].item()
+
+    for i in range(1, no_blanks_probs.size(0)):
+        if new_pred[i].item() != prev_found_word:
+            decoded_labels = torch.cat((decoded_labels, no_blanks_probs[i, :, :].unsqueeze(0)), dim=0)
+        prev_found_word = new_pred[i].item()
+
+    return decoded_labels.squeeze(1)
+
+def ctc_argmax_decode(output, target, blank_label_index=0):
+    """
+    #### IMPLEMENTED FOR BATCH SIZE = 1
+    Args:
+        output: output of network (torch.Tensor) # shape (Sequence length, 1, Number of classes)
+        target: output of network (torch.Tensor) # shape (Sequence length)
+        blank_label_index: index of blank label (int) Default: 0
+
+    Returns: Decode labels
+
+    """
+    assert len(output.shape) == 3
+    probs = torch.nn.functional.softmax(output, dim=2)
+    pred = probs.argmax(dim=2).squeeze(1)
+    #print(pred)
+    no_blanks_predictions = pred[pred != blank_label_index]
+    # print(pred)
+    # print('\n')
+    # print(no_blanks_predictions)
+    # print(pred.shape,no_blanks_predictions.shape)
+    # if pred.shape!=no_blanks_predictions.shape:
+    #     print('sdsdsd')
+    if no_blanks_predictions.nelement() == 0:
+        no_blanks_predictions = pred#[-1, :, :].unsqueeze(0)
+
+    new_pred = no_blanks_predictions#.argmax(dim=2).squeeze(1)
+
+    decoded_labels = [new_pred[0].item()]
+    prev_found_word = new_pred[0].item()
+    #print(prev_found_word)
+    for i in range(1, no_blanks_predictions.size(0)):
+        if new_pred[i].item() != prev_found_word:
+            decoded_labels.append(new_pred[i].item()) #= torch.cat((decoded_labels, no_blanks_predictions[i, :, :].unsqueeze(0)), dim=0)
+        prev_found_word = new_pred[i].item()
+
     return decoded_labels
+
+
+from torchmetrics import Metric
+
+
+
+class BAcc(Metric):
+    def __init__(self,blank_index=0):
+        super(BAcc, self).__init__()
+        self.blank_index = blank_index
+        self.add_state("correct", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
+    def update(self, preds: torch.Tensor, target: torch.Tensor):
+        output = torch.sigmoid(preds.view(-1))
+        pred = output > 0.5
+        truth = target > 0.5
+        #print(pred,target)
+        # print("Pred {} , Target {}".format(pred.item(),truth.item()))
+        acc = pred.eq(truth).sum() / float(output.numel())
+        #print(pred.eq(truth).sum(), output.numel())
+        self.correct +=pred.eq(truth).sum()
+        self.total+=output.numel()
+
+        return acc
+    def compute(self):
+        return self.correct / float(self.total)
+
+
+class WER(Metric):
+    def __init__(self,blank_index=0):
+        super(WER, self).__init__()
+        self.blank_index = blank_index
+        self.add_state("correct", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("deletions", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("insertions", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("substitutions", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
+    def update(self, preds: torch.Tensor, target: torch.Tensor):
+        decoded_preds = ctc_argmax_decode(preds, target, blank_label_index=self.blank_index)
+
+        temp_wer, C, S, I, D = word_error_rate(target.squeeze(0).cpu().tolist(), decoded_preds)
+        self.correct +=C
+        self.deletions+=D
+        self.insertions+=I
+        self.substitutions+=S
+        self.total+=S+D+C
+
+    def compute(self):
+        return 100.0*(self.substitutions+self.deletions+self.insertions) / self.total

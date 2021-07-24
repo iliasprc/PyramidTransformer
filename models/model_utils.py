@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from models.cslr.googlenet_tcl import GoogLeNet_TConvs, ISL_cnn
+from models.cslr.googlenet_tcl import GoogLeNet_TConvs, ISL_cnn,CSLR_2dcnntcl
 from models.gcn.model.decouple_gcn_attn import STGCN, STGCN_Transformer
 from models.skeleton.skeleton_transformer import SkeletonTR, CSLRSkeletonTR, SK_TCL
 from models.vmz.eca_ir_csn_152 import eca_ir_csn_152
@@ -50,6 +50,8 @@ def CSLR_video_encoder(config, N_classes):
         return SLR_I3D(config, num_classes=100)
     elif config.model.name == 'GoogLeNet_TConvs':
         return GoogLeNet_TConvs(config, N_classes=N_classes, mode='continuous')
+    elif config.model.name == 'CSLR_2dcnntcl':
+        return CSLR_2dcnntcl(config, N_classes=N_classes)
     elif config.model.name == 'CSLR_I3D':
         return SLR_I3D(num_classes=N_classes)
     elif config.model.name == 'SkeletonTR':
@@ -66,6 +68,12 @@ def CSLR_video_encoder(config, N_classes):
     elif config.model.name == 'ir_csn_152_1d':
         from models.multimodal.mutimodal_model import ir_csn_152_1d
         return ir_csn_152_1d(num_classes=N_classes)
+
+def SLD_model(config, N_classes):
+    from models.detection.sldetection import SLDetection_2dcnntcl
+
+    if config.model.name == 'SLDetection_2dcnntcl':
+        return SLDetection_2dcnntcl(config,N_classes=N_classes)
 
 
 def ISLR_video_encoder(config, N_classes):
@@ -169,7 +177,7 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     """
     checkpoint1 = torch.load(checkpoint, map_location='cpu')
     print(checkpoint1.keys())
-    pretrained_dict = checkpoint1['model_dict']
+    pretrained_dict = checkpoint1['state_dict']
     model_dict = model.state_dict()
     print(pretrained_dict.keys())
     print(model_dict.keys())
@@ -178,7 +186,7 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     pretrained_dictnew = {}
     for k, v in pretrained_dict.items():
         if 'cnn.' in k:
-            k = k[4:]
+            k = k#[4:]
         pretrained_dictnew[k] = v
     # # # for k, v in pretrained_dict.items():
     # # #     k = k.strip('model.')

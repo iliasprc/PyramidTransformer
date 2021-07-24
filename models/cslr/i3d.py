@@ -48,7 +48,7 @@ class MaxPool3dSamePadding(nn.MaxPool3d):
         return super(MaxPool3dSamePadding, self).forward(x)
 
 
-class Unit3D(BaseModel):
+class Unit3D(nn.Module):
 
     def __init__(self, in_channels,
                  output_channels,
@@ -123,7 +123,7 @@ class Unit3D(BaseModel):
         return x
 
 
-class InceptionModule(BaseModel):
+class InceptionModule(nn.Module):
     def __init__(self, in_channels, out_channels, name):
         super(InceptionModule, self).__init__()
 
@@ -188,7 +188,7 @@ class InceptionI3d(BaseModel):
         'Predictions',
     )
 
-    def __init__(self, num_classes=400, temporal_resolution=16, mode='isolated', spatial_squeeze=True,
+    def __init__(self,config, num_classes=400, temporal_resolution=16, mode='isolated', spatial_squeeze=True,
                  final_endpoint='Logits', name='inception_i3d', in_channels=3, dropout_keep_prob=0.5):
         """Initializes I3D model instance.
         Args:
@@ -211,7 +211,7 @@ class InceptionI3d(BaseModel):
         if final_endpoint not in self.VALID_ENDPOINTS:
             raise ValueError('Unknown final endpoint %s' % final_endpoint)
 
-        super(InceptionI3d, self).__init__()
+        super(InceptionI3d, self).__init__(config)
         self.mode = mode
 
         print("Mode i3d ", self.mode)
@@ -485,7 +485,7 @@ class SLR_I3D(BaseModel):
         self.rnn_dropout = dropt
         self.bidirectional = bi
 
-        self.cnn = InceptionI3d(num_classes=400, temporal_resolution=temporal_resolution, mode='isolated',
+        self.cnn = InceptionI3d(config=config,num_classes=400, temporal_resolution=temporal_resolution, mode='isolated',
                                 in_channels=3)
 
         self.cnn.replace_logits(self.n_classes)

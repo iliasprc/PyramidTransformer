@@ -86,6 +86,43 @@ class CSLR_DataModule(LightningDataModule):
         return data.DataLoader(self.test_set, **self.test_params)
 
 
+
+class SLDetection_DataModule(LightningDataModule):
+
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+
+        self.test_params = {'batch_size': config.dataloader.test.batch_size,
+                            'shuffle': False,
+                            'num_workers': 2}
+        self.val_params = {'batch_size': config.dataloader.val.batch_size,
+                           'shuffle': config.dataloader.val.shuffle,
+                           'num_workers': config.dataloader.val.num_workers,
+                           'pin_memory': True}
+
+        self.train_params = {'batch_size': config.dataloader.train.batch_size,
+                             'shuffle': True,
+                             'num_workers': config.dataloader.train.num_workers,
+                             'pin_memory': True}
+
+    def prepare_data(self) -> None:
+        pass
+
+    def setup(self, stage=None):
+        self.training_set, self.val_set, self.test_set, self.classes, self.id2w = cslr_datasets(self.config)
+
+    def train_dataloader(self):
+        return data.DataLoader(self.training_set, **self.train_params)
+
+    def val_dataloader(self):
+        return data.DataLoader(self.val_set, **self.val_params)
+
+    def test_dataloader(self):
+        return data.DataLoader(self.test_set, **self.test_params)
+
+
+
 def data_generators(config):
     """
 
@@ -283,7 +320,105 @@ def cslr_datasets(config):
         test_set = GSL_SI(config=config, mode=test_prefix, classes=classes)
 
         return training_set, validation_set, test_set, classes, id2w
+    elif config.dataset.name == 'GSL_SI2':
+        train_prefix = "train"
+        val_prefix = "val"
+        test_prefix = "test"
 
+        indices, classes, id2w = read_gsl_continuous_classes(
+            os.path.join(config.cwd, 'data_loader/gsl/files/continuous_classes.csv'))
+        w2id = {v: k for k, v in id2w.items()}
+        from data_loader.gsl.dataloader_gsl_siv2 import GSL_SIv2
+        training_set = GSL_SIv2(config=config, mode=train_prefix, classes=classes)
+
+        validation_set = GSL_SIv2(config=config, mode=val_prefix, classes=classes)
+
+       # test_set = GSL_SIv2(config=config, mode=test_prefix, classes=classes)
+
+        return training_set, validation_set, None, classes, id2w
+    elif config.dataset.name == 'GSLW':
+        train_prefix = "train"
+        val_prefix = "val"
+        test_prefix = "test"
+
+        indices, classes, id2w = read_gsl_continuous_classes(
+            os.path.join(config.cwd, 'data_loader/gsl/files/continuous_classes.csv'))
+        w2id = {v: k for k, v in id2w.items()}
+
+        training_set = GSLW(config=config, mode=train_prefix, classes=classes)
+
+        validation_set = GSLW(config=config, mode=val_prefix, classes=classes)
+
+        # test_set = GSL_SI(config=config,  mode=test_prefix, classes=classes)
+        test_generator = None  # data.DataLoader(test_set, **test_params)
+
+        return training_set, validation_set, test_set, classes, id2w
+    elif config.dataset.name == 'GSL_SI_Skeleton':
+        train_prefix = "train"
+        val_prefix = "val"
+        test_prefix = "test"
+
+        indices, classes, id2w = read_gsl_continuous_classes(
+            os.path.join(config.cwd, 'data_loader/gsl/files/continuous_classes.csv'))
+        w2id = {v: k for k, v in id2w.items()}
+
+        training_set = GSL_SI_Skeleton(config=config, mode=train_prefix, classes=classes)
+
+        validation_set = GSL_SI_Skeleton(config=config, mode=val_prefix, classes=classes)
+
+        test_set = GSL_SI_Skeleton(config=config, mode=test_prefix, classes=classes)
+
+        return training_set, validation_set, test_set, classes, id2w
+    elif config.dataset.name == 'GSL_SI_MModal':
+        from data_loader.gsl.dataloader_gsl_si_mmodal import GSL_SI_MModal
+        train_prefix = "train"
+        val_prefix = "val"
+        test_prefix = "test"
+
+        indices, classes, id2w = read_gsl_continuous_classes(
+            os.path.join(config.cwd, 'data_loader/gsl/files/continuous_classes.csv'))
+        w2id = {v: k for k, v in id2w.items()}
+
+        training_set = GSL_SI_MModal(config=config, mode=train_prefix, classes=classes)
+
+        validation_set = GSL_SI_MModal(config=config, mode=val_prefix, classes=classes)
+
+        test_set = GSL_SI_MModal(config=config, mode=test_prefix, classes=classes)
+
+        return training_set, validation_set, test_set, classes, id2w
+
+
+
+def sldetection_datasets(config):
+    test_params = {'batch_size': config.dataloader.test.batch_size,
+                   'shuffle': False,
+                   'num_workers': 2}
+    val_params = {'batch_size': config.dataloader.val.batch_size,
+                  'shuffle': config.dataloader.val.shuffle,
+                  'num_workers': config.dataloader.val.num_workers,
+                  'pin_memory': True}
+
+    train_params = {'batch_size': config.dataloader.train.batch_size,
+                    'shuffle': config.dataloader.train.shuffle,
+                    'num_workers': config.dataloader.train.num_workers,
+                    'pin_memory': True}
+
+    if config.dataset.name == 'GSL_SI2':
+        train_prefix = "train"
+        val_prefix = "val"
+        test_prefix = "test"
+
+        indices, classes, id2w = read_gsl_continuous_classes(
+            os.path.join(config.cwd, 'data_loader/gsl/files/continuous_classes.csv'))
+        w2id = {v: k for k, v in id2w.items()}
+        from data_loader.gsl.dataloader_gsl_siv2 import GSL_SIv2
+        training_set = GSL_SIv2(config=config, mode=train_prefix, classes=classes)
+
+        validation_set = GSL_SIv2(config=config, mode=val_prefix, classes=classes)
+
+       # test_set = GSL_SIv2(config=config, mode=test_prefix, classes=classes)
+
+        return training_set, validation_set, None, classes, id2w
     elif config.dataset.name == 'GSLW':
         train_prefix = "train"
         val_prefix = "val"

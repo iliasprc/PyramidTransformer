@@ -11,6 +11,30 @@ NUM_FACE_JOINTS = 500
 MISSING = -1000.0
 
 
+def load_gsl_json(path):
+    f = open(path, 'r')
+    data = json.load(f)
+   ## print(data)
+   # print(len(data))
+    paths = []
+    labels = []
+    for repetition in data:
+        id = repetition['id']
+        num_of_sentences = repetition['Number_of_sentences']
+        for snt_dict in repetition['sentences']:
+           # print(snt_dict)
+            path = id+'/'+snt_dict
+            a = repetition['sentences'][snt_dict]
+            glosses = a['glosses']
+           # print(glosses)
+            #print(path,a)
+            paths.append(path)
+            labels.append(a)
+    return paths,labels
+
+        #print(id)
+#load_gsl_json('/home/iliask/PycharmProjects/SLVTP/data_loader/gsl/files/val.json')
+
 def round_up_to_odd(f):
     return np.ceil(f) // 2 * 2 + 1
 

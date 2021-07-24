@@ -62,19 +62,5 @@ class BaseModel(pl.LightningModule):
                                           patience=self.config['scheduler']['scheduler_patience'],
                                           min_lr=self.config['scheduler']['scheduler_min_lr'],
                                           verbose=self.config['scheduler']['scheduler_verbose'])
-        return {'optimizer': optimizer, 'lr_scheduler': scheduler,'monitor': 'metric'}
+        return {'optimizer': optimizer, 'lr_scheduler': scheduler,'monitor': 'valid_loss_epoch'}
 
-
-    def loss(self, *inputs):
-        """
-        Loss calculation
-        """
-        raise NotImplementedError
-
-    # def __str__(self):
-    #     """
-    #     Model prints with number of trainable parameters
-    #     """
-    #     model_parameters = filter(lambda p: p.requires_grad, self.parameters())
-    #     params = sum([np.prod(p.size()) for p in model_parameters])
-    #     return super().__str__() + '\nTrainable parameters: {}'.format(params)

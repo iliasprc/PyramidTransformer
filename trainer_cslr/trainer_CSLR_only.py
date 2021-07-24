@@ -62,9 +62,15 @@ class Trainer_CSLR_method(BaseTrainer):
 
         self.train_metrics.reset()
         n_critic = 2
+        self.avg = 0
         for batch_idx, (data, target) in enumerate(self.train_data_loader):
 
             data = data.to(self.device)
+            t = data.shape[2]
+            yt = target.shape[-1]
+            #print(t,yt)
+            #self.avg+=t/yt
+           # print(self.avg/(batch_idx+1))
 
             target = target.long().to(self.device)
 

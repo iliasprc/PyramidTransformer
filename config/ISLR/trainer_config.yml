@@ -9,7 +9,7 @@ trainer:
   load: False # load pretrained checkpoint
   gradient_accumulation: 2 # gradient accumulation steps
   pretrained_cpkt: /home/papastrat/Desktop/ilias/SLR_checkpoints/I3D/i3d_msasl_gsl_date_20_09_2020_20.23.07/bestgenerator.pth
-  log_interval: 1000 # print statistics every log_interval
+  log_interval: 10000 # print statistics every log_interval
   model:
     name: ISL_cnn # model name SkeletonTR
     optimizer: # optimizer configuration
@@ -18,17 +18,17 @@ trainer:
       weight_decay: 0.000001 # weight decay
     scheduler: # learning rate scheduler
       type: ReduceLRonPlateau # type of scheduler
-      scheduler_factor: 0.5 # learning rate change ratio
+      scheduler_factor: 0.8 # learning rate change ratio
       scheduler_patience: 2 # patience for some epochs
       scheduler_min_lr: 1e-3 # minimum learning rate value
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
-      batch_size: 8 # batch size
+      batch_size: 4 # batch size
       shuffle: True # shuffle samples after every epoch
-      num_workers: 2 # number of thread for dataloader1
+      num_workers: 4 # number of thread for dataloader1
     val:
-      batch_size: 8
+      batch_size: 4
       shuffle: False
       num_workers: 2
     test:
@@ -39,7 +39,7 @@ trainer:
     input_data: /home/iliask/Desktop/ilias/datasets/
     name: GSL_ISO # dataset name
     modality: RGB # type of modality
-    classes: 1 # number of classes
+    classes: 310 # number of classes
     normalize: True # mean, std normalization
     padding : True # pad videos
     dim: [224,224] # frame dimension
