@@ -1,13 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchmetrics
 from einops import repeat, rearrange
 from torchvision import models
-import torchmetrics
+
 from base.base_model import BaseModel
 from models.transformers.transformer import TransformerEncoder
 from utils.ctcl import CTCL
 from utils.metrics import WER
+
 
 def expand_to_batch(tensor, desired_size):
     tile = desired_size // tensor.shape[0]
@@ -34,12 +36,6 @@ class PositionalEncoding1D(nn.Module):
         return self.dropout(x)
 
 
-
-
-
-from torch.nn.utils import weight_norm
-
-
 class Chomp1d(nn.Module):
     def __init__(self, chomp_size):
         super(Chomp1d, self).__init__()
@@ -53,13 +49,15 @@ class TemporalBlock(nn.Module):
     def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding, dropout=0.2):
         super(TemporalBlock, self).__init__()
         self.conv1 = nn.Sequential(nn.Conv1d(n_inputs, n_outputs, kernel_size,
-                                           stride=stride, padding=padding, dilation=dilation,groups=n_outputs//4),nn.BatchNorm1d(n_outputs))
+                                             stride=stride, padding=padding, dilation=dilation, groups=n_outputs // 4),
+                                   nn.BatchNorm1d(n_outputs))
         self.chomp1 = Chomp1d(padding)
         self.relu1 = nn.LeakyReLU(0.1)
         self.dropout1 = nn.Dropout(dropout)
 
         self.conv2 = nn.Sequential(nn.Conv1d(n_outputs, n_outputs, kernel_size,
-                                           stride=stride, padding=padding, dilation=dilation,groups=n_outputs),nn.BatchNorm1d(n_outputs))
+                                             stride=stride, padding=padding, dilation=dilation, groups=n_outputs),
+                                   nn.BatchNorm1d(n_outputs))
         self.chomp2 = Chomp1d(padding)
         self.relu2 = nn.LeakyReLU(0.1)
         self.dropout2 = nn.Dropout(dropout)
@@ -67,9 +65,9 @@ class TemporalBlock(nn.Module):
         self.net = nn.Sequential(self.conv1, self.chomp1, self.relu1, self.dropout1,
                                  self.conv2, self.chomp2, self.relu2, self.dropout2)
         self.downsample = nn.Conv1d(n_inputs, n_outputs, 1) if n_inputs != n_outputs else None
-        self.relu =  nn.LeakyReLU(0.1)
-        self.pool = nn.MaxPool1d(2,2)
-        #self.init_weights()
+        self.relu = nn.LeakyReLU(0.1)
+        self.pool = nn.MaxPool1d(2, 2)
+        # self.init_weights()
 
     def init_weights(self):
         self.conv1.weight.data.normal_(0, 0.01)
@@ -80,7 +78,7 @@ class TemporalBlock(nn.Module):
     def forward(self, x):
         out = self.net(x)
         res = x if self.downsample is None else self.downsample(x)
-       # print(out.shape,res.shape)
+        # print(out.shape,res.shape)
         return self.pool(self.relu(out + res))
 
 
@@ -91,21 +89,23 @@ class TemporalConvNet(nn.Module):
         num_levels = len(num_channels)
         for i in range(num_levels):
             dilation_size = 2 ** i
-            in_channels = num_inputs if i == 0 else num_channels[i-1]
+            in_channels = num_inputs if i == 0 else num_channels[i - 1]
             out_channels = num_channels[i]
             layers += [TemporalBlock(in_channels, out_channels, kernel_size, stride=1, dilation=dilation_size,
-                                     padding=(kernel_size-1) * dilation_size, dropout=dropout)]
+                                     padding=(kernel_size - 1) * dilation_size, dropout=dropout)]
 
         self.network = nn.Sequential(*layers)
         self.init_weight()
+
     def init_weight(self):
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out')
             elif isinstance(m, nn.BatchNorm1d):
-                #print(m)
+                # print(m)
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
+
     def forward(self, x):
         return self.network(x)
 
@@ -116,49 +116,58 @@ class TemporalConvNet(nn.Module):
 # print(o.shape)
 class MixTConv(nn.Module):
 
-    def __init__(self,num_channels,split=4):
+    def __init__(self, num_channels, split=4):
         super(MixTConv, self).__init__()
 
         self.split = split
-        self.conv1 = nn.Conv1d(in_channels=num_channels//self.split,out_channels=num_channels//self.split,kernel_size=1,groups=num_channels//self.split)
-        self.conv2 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split, kernel_size=3,padding=1,
+        self.conv1 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split,
+                               kernel_size=1, groups=num_channels // self.split)
+        self.conv2 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split,
+                               kernel_size=3, padding=1,
                                groups=num_channels // self.split)
-        self.conv3 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split, kernel_size=5,padding=2,
+        self.conv3 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split,
+                               kernel_size=5, padding=2,
                                groups=num_channels // self.split)
-        self.conv4 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split, kernel_size=7,padding=3,
+        self.conv4 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split,
+                               kernel_size=7, padding=3,
                                groups=num_channels // self.split)
-    def forward(self,x):
-        x1,x2,x3,x4 = torch.chunk(x,self.split,dim=1)
+
+    def forward(self, x):
+        x1, x2, x3, x4 = torch.chunk(x, self.split, dim=1)
         x1 = self.conv1(x1)
         x2 = self.conv1(x2)
         x3 = self.conv1(x3)
         x4 = self.conv1(x4)
 
-        x = torch.cat((x1,x2,x3,x4),dim=1)+x
+        x = torch.cat((x1, x2, x3, x4), dim=1) + x
         return x
 
 
 class MixTConvHead(nn.Module):
 
-    def __init__(self,num_channels,split=1):
+    def __init__(self, num_channels, split=1):
         super(MixTConvHead, self).__init__()
 
         self.split = split
-        self.conv1 = nn.Conv1d(in_channels=num_channels//self.split,out_channels=num_channels//self.split,kernel_size=1,groups=num_channels//self.split)
-        self.conv2 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split, kernel_size=3,padding=1,
+        self.conv1 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split,
+                               kernel_size=1, groups=num_channels // self.split)
+        self.conv2 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split,
+                               kernel_size=3, padding=1,
                                groups=num_channels // self.split)
-        self.conv3 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split, kernel_size=5,padding=2,
+        self.conv3 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split,
+                               kernel_size=5, padding=2,
                                groups=num_channels // self.split)
-        self.conv4 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split, kernel_size=7,padding=3,
+        self.conv4 = nn.Conv1d(in_channels=num_channels // self.split, out_channels=num_channels // self.split,
+                               kernel_size=7, padding=3,
                                groups=num_channels // self.split)
-    def forward(self,x):
 
+    def forward(self, x):
         x1 = self.conv1(x)
         x2 = self.conv1(x)
         x3 = self.conv1(x)
         x4 = self.conv1(x)
 
-        x = x1+x2+x3+x4+x
+        x = x1 + x2 + x3 + x4 + x
         return x
 
 
@@ -376,8 +385,8 @@ class GoogLeNet_TConvs(BaseModel):
 
 
 class ISL_cnn(BaseModel):
-    def __init__(self,config, hidden_size=512, n_layers=2, dropt=0.5, bi=True, N_classes=1232, mode='isolated',
-                 backbone='repvgg_b0'):
+    def __init__(self, config, hidden_size=512, n_layers=2, dropt=0.5, bi=True, N_classes=1232, mode='isolated',
+                 backbone=''):
         """
 
         :param hidden_size: Hidden size of BLSTM
@@ -406,7 +415,7 @@ class ISL_cnn(BaseModel):
 
         if bi:
             hidden_size = 2 * hidden_size
-        #self.mix_t_conv_0 = MixTConvHead(3)
+        # self.mix_t_conv_0 = MixTConvHead(3)
         self.select_backbone(backbone)
 
         self.use_temporal = True
@@ -415,10 +424,13 @@ class ISL_cnn(BaseModel):
             self.temp_channels = 1024
             self.tc_kernel_size = 5
             self.tc_pool_size = 2
-            #self.mix_t_conv_1 = MixTConv(self.dim_feats)
-            from models.detection.mstcn2 import MS_TCN2
-            self.temporal = MS_TCN2(num_layers_PG=5,num_layers_R=5,num_R=3,num_f_maps=1024,dim=1024)
-            #self.temporal= TemporalConvNet(self.dim_feats, [1024,1024,1024,1024])
+            # self.mix_t_conv_1 = MixTConv(self.dim_feats)
+            from models.layers.temporal import MS_TCN2, TCL
+            self.ms_tcn = MS_TCN2(num_layers_PG=5, num_layers_R=5, num_R=3, num_f_maps=1024, dim=1024,average=True)
+            self.temporal = TCL(num_input_feats=1024, dim=1024, n_layers=2, kernel_size=self.tc_kernel_size, stride=1,
+                                pooling_size=self.tc_pool_size, dropout=0.1, groupwise=True)
+
+            # self.temporal= TemporalConvNet(self.dim_feats, [1024,1024,1024,1024])
             # self.temporal = torch.nn.Sequential(
             #     nn.Conv1d(self.dim_feats, 1024, kernel_size=self.tc_kernel_size, stride=2, padding=self.padding),
             #     nn.LeakyReLU(0.1),
@@ -447,60 +459,13 @@ class ISL_cnn(BaseModel):
 
         self.train_acc = torchmetrics.Accuracy()
         self.valid_acc = torchmetrics.Accuracy()
+
     def forward(self, x, y=None):
-        # select continous or isolated
-        if (self.mode == 'continuous'):
-            return self.continuous_forwardtr(x, y)
-        elif (self.mode == 'isolated'):
-            return self.isolated_forward(x, y)
 
-        return None
+        return self.isolated_forward(x, y)
 
-    def continuous_forward(self, x, y):
-        with torch.no_grad():
-            batch_size, C, timesteps, H, W = x.size()
-            c_in = x.view(batch_size * timesteps, C, H, W)
-            c_outputs = self.cnn(c_in)
-            c_out = c_outputs.contiguous().view(batch_size, timesteps, -1)
-        # c_out has size timesteps x dim feats
-        # temporal layers gets input size batch_size x dim_feats x timesteps
-        temp_input = c_out.permute(0, 2, 1)
-        temp = self.temporal(temp_input)
-        # temporal layers output size batch_size x dim_feats x timesteps
-        # rnn input must be timesteps x batch_size x dim_feats
-        rnn_input = temp.permute(2, 0, 1)
-        rnn_out, (h_n, h_c) = self.rnn(rnn_input)
-        fc_input = rnn_out.squeeze(1)
-        y_hat = self.fc(fc_input).unsqueeze(1)
-        if y != None:
-            loss_ctc = self.loss(y_hat, y)
-            return y_hat, loss_ctc
-        return y_hat
 
-    def continuous_forwardtr(self, x, y):
-        with torch.no_grad():
-            batch_size, C, timesteps, H, W = x.size()
-            c_in = x.view(batch_size * timesteps, C, H, W)
-            c_outputs = self.cnn(c_in)
-            c_out = c_outputs.contiguous().view(batch_size, timesteps, -1)
-        # c_out has size timesteps x dim feats
-        # temporal layers gets input size batch_size x dim_feats x timesteps
-        temp_input = c_out.permute(0, 2, 1)
 
-        temp = self.temporal(temp_input)
-        # temporal layers output size batch_size x dim_feats x timesteps
-        # rnn input must be timesteps x batch_size x dim_feats
-        rnn_input = rearrange(temp, 'b c t -> b t c')
-
-        x = self.pe(rnn_input)
-        x = rearrange(x, 'b t d -> t b d')
-        x = self.transformer_encoder(x)
-
-        y_hat = self.fc(x)
-        if y != None:
-            loss_ctc = self.loss(y_hat, y)
-            return y_hat, loss_ctc
-        return y_hat
 
     def __inference__(self, x):
         batch_size, timesteps, C, H, W = x.size()
@@ -531,8 +496,8 @@ class ISL_cnn(BaseModel):
 
         batch_size, C, timesteps, H, W = x.size()
 
-        #c_in = self.mix_t_conv_0( rearrange(x,'b c t h w -> (b h w) c t'))
-        c_in = x.view(batch_size * timesteps, C, H, W) #+  c_in.view(batch_size * timesteps, C, H, W)
+        # c_in = self.mix_t_conv_0( rearrange(x,'b c t h w -> (b h w) c t'))
+        c_in = x.view(batch_size * timesteps, C, H, W)  # +  c_in.view(batch_size * timesteps, C, H, W)
 
         c_outputs = self.cnn(c_in)
         c_out = c_outputs.contiguous().view(batch_size, timesteps, -1)
@@ -540,12 +505,12 @@ class ISL_cnn(BaseModel):
         # c_out has size batch_size x timesteps x dim feats
         # temporal layers gets input size batch_size x dim_feats x timesteps
         if self.use_temporal:
-           # temp_input = self.mix_t_conv_1(rearrange(c_out, 'b t d -> b d t'))
-           # print(c_out.shape)
-            out = self.temporal(rearrange(c_out, 'b t d -> b d t')).squeeze(-1)
+            # temp_input = self.mix_t_conv_1(rearrange(c_out, 'b t d -> b d t'))
+            # print(c_out.shape)
+            out = self.temporal(self.ms_tcn(rearrange(c_out, 'b t d -> b d t'))).squeeze(-1)
 
-            #print(out.shape)
-            y_hat = self.fc(out )
+            # print(out.shape)
+            y_hat = self.fc(out)
         else:
             cls_token = repeat(self.cls_token, 'n d -> b n d', b=batch_size)
             # print(cls_token.shape,c_out.shape)
@@ -566,19 +531,19 @@ class ISL_cnn(BaseModel):
     def training_step(self, train_batch, batch_idx=None):
         x, y = train_batch
         y_hat, loss = self.forward(x, y)
-        acc = self.train_acc(y_hat,y.squeeze(-1))
-        self.log('train_acc', self.train_acc, on_epoch=True,prog_bar=True)
-        #dict_for_progress_bar = {'train_acc': acc}
-        return {'loss':loss,'out':y_hat}
+        acc = self.train_acc(y_hat, y.squeeze(-1))
+        self.log('train_acc', self.train_acc, on_epoch=True, prog_bar=True)
+        # dict_for_progress_bar = {'train_acc': acc}
+        return {'loss': loss, 'out': y_hat}
 
     def validation_step(self, train_batch, batch_idx=None):
         x, y = train_batch
         y_hat, loss = self.forward(x, y)
-        acc =         self.valid_acc( y_hat, y.squeeze(-1))
-        self.log('valid_acc', self.valid_acc, on_step=True, on_epoch=True,prog_bar=True)
-        self.log('valid_loss',loss, on_step=True, on_epoch=True,prog_bar=True)
+        acc = self.valid_acc(y_hat, y.squeeze(-1))
+        self.log('valid_acc', self.valid_acc, on_step=True, on_epoch=True, prog_bar=True)
+        self.log('valid_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
         dict_for_progress_bar = {'train_acc': acc}
-        return {'loss':loss,'out':y_hat}
+        return {'loss': loss, 'out': y_hat}
 
     def configure_optimizers(self):
         return self.optimizer()
@@ -641,15 +606,14 @@ class ISL_cnn(BaseModel):
         else:
             import timm
             backbone = 'mobilenetv3_large_100_miil_in21k'
-            self.cnn = timm.create_model(backbone,pretrained=True)
+            self.cnn = timm.create_model(backbone, pretrained=True)
             self.cnn.classifier = Identity()
             self.cnn.head = Identity()
             self.dim_feats = 1280
 
 
-
 class CSLR_2dcnntcl(BaseModel):
-    def __init__(self,config, hidden_size=512, n_layers=2, dropt=0.5, bi=True, N_classes=1232,
+    def __init__(self, config, hidden_size=512, n_layers=2, dropt=0.5, bi=True, N_classes=1232,
                  backbone=''):
         """
 
@@ -668,16 +632,13 @@ class CSLR_2dcnntcl(BaseModel):
         self.num_layers = n_layers
         self.n_cl = N_classes
 
-
-
         self.loss = CTCL()
         # for end-to-end
         self.padding = 1
 
-
         if bi:
             hidden_size = 2 * hidden_size
-        #self.mix_t_conv_0 = MixTConvHead(3)
+        # self.mix_t_conv_0 = MixTConvHead(3)
         self.select_backbone(backbone)
 
         self.use_temporal = True
@@ -686,12 +647,11 @@ class CSLR_2dcnntcl(BaseModel):
             self.temp_channels = 1024
             self.tc_kernel_size = 5
             self.tc_pool_size = 2
-            #self.mix_t_conv_1 = MixTConv(self.dim_feats)
+            # self.mix_t_conv_1 = MixTConv(self.dim_feats)
             from models.detection.mstcn2 import MS_TCN2
-            self.temporal = MS_TCN2(num_layers_PG=5,num_layers_R=5,num_R=3,num_f_maps=1024,dim=1024)
-            self.pool1 = nn.MaxPool1d(3,3)
+            self.temporal = MS_TCN2(num_layers_PG=5, num_layers_R=5, num_R=3, num_f_maps=1024, dim=1024)
+            self.pool1 = nn.MaxPool1d(3, 3)
             self.pool2 = nn.MaxPool1d(3, 3)
-
 
             planes = 1024
 
@@ -713,6 +673,7 @@ class CSLR_2dcnntcl(BaseModel):
 
         self.train_wer = WER()
         self.valid_wer = WER()
+
     def forward(self, x, y=None):
         # select continous or isolated
 
@@ -735,24 +696,21 @@ class CSLR_2dcnntcl(BaseModel):
         # print(c_out.shape)
         out = self.pool2(self.temporal(self.pool1(rearrange(c_out, 'b t d -> b d t')))).squeeze(-1)
 
-        #print(out.shape)
+        # print(out.shape)
         y_hat = self.fc(rearrange(out, 'b d t -> b t d'))
         y_hat = rearrange(y_hat, 'b t d -> t b d')
-        #print(y_hat.shape)
+        # print(y_hat.shape)
         if y != None:
             loss_ctc = self.loss(y_hat, y)
             return y_hat, loss_ctc
         return y_hat
 
-
-
-
     def isolated_forward(self, x, y=None):
 
         batch_size, C, timesteps, H, W = x.size()
 
-        #c_in = self.mix_t_conv_0( rearrange(x,'b c t h w -> (b h w) c t'))
-        c_in = x.view(batch_size * timesteps, C, H, W) #+  c_in.view(batch_size * timesteps, C, H, W)
+        # c_in = self.mix_t_conv_0( rearrange(x,'b c t h w -> (b h w) c t'))
+        c_in = x.view(batch_size * timesteps, C, H, W)  # +  c_in.view(batch_size * timesteps, C, H, W)
 
         c_outputs = self.cnn(c_in)
         c_out = c_outputs.contiguous().view(batch_size, timesteps, -1)
@@ -760,12 +718,12 @@ class CSLR_2dcnntcl(BaseModel):
         # c_out has size batch_size x timesteps x dim feats
         # temporal layers gets input size batch_size x dim_feats x timesteps
         if self.use_temporal:
-           # temp_input = self.mix_t_conv_1(rearrange(c_out, 'b t d -> b d t'))
-           # print(c_out.shape)
+            # temp_input = self.mix_t_conv_1(rearrange(c_out, 'b t d -> b d t'))
+            # print(c_out.shape)
             out = self.temporal(rearrange(c_out, 'b t d -> b d t')).squeeze(-1)
 
-            #print(out.shape)
-            y_hat = self.fc(out )
+            # print(out.shape)
+            y_hat = self.fc(out)
         else:
             cls_token = repeat(self.cls_token, 'n d -> b n d', b=batch_size)
             # print(cls_token.shape,c_out.shape)
@@ -786,20 +744,20 @@ class CSLR_2dcnntcl(BaseModel):
     def training_step(self, train_batch, batch_idx=None):
         x, y = train_batch
         y_hat, loss = self.forward(x, y)
-        trainwer = self.train_wer(y_hat,y)
-        self.log('train_wer', self.train_wer, on_epoch=True,prog_bar=True)
+        trainwer = self.train_wer(y_hat, y)
+        self.log('train_wer', self.train_wer, on_epoch=True, prog_bar=True)
 
-        self.log('train_loss',loss.item(), on_step=True, on_epoch=True,prog_bar=True)
-        return {'loss':loss,'out':y_hat}
+        self.log('train_loss', loss.item(), on_step=True, on_epoch=True, prog_bar=True)
+        return {'loss': loss, 'out': y_hat}
 
     def validation_step(self, train_batch, batch_idx=None):
         x, y = train_batch
         y_hat, loss = self.forward(x, y)
-        acc =         self.valid_wer( y_hat, y)
-        self.log('valid_wer', self.valid_wer, on_step=True, on_epoch=True,prog_bar=True)
-        self.log('valid_loss',loss.item(),on_step=True,on_epoch=True,prog_bar=True)
+        acc = self.valid_wer(y_hat, y)
+        self.log('valid_wer', self.valid_wer, on_step=True, on_epoch=True, prog_bar=True)
+        self.log('valid_loss', loss.item(), on_step=True, on_epoch=True, prog_bar=True)
 
-        return {'loss':loss,'out':y_hat}
+        return {'loss': loss, 'out': y_hat}
 
     def configure_optimizers(self):
         return self.optimizer()
@@ -862,7 +820,7 @@ class CSLR_2dcnntcl(BaseModel):
         else:
             import timm
             backbone = 'mobilenetv3_large_100_miil_in21k'
-            self.cnn = timm.create_model(backbone,pretrained=True)
+            self.cnn = timm.create_model(backbone, pretrained=True)
             self.cnn.classifier = Identity()
             self.cnn.head = Identity()
             self.dim_feats = 1280

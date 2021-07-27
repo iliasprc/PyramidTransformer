@@ -122,7 +122,7 @@ def main():
 
     log.info(f'{len(classes)}')
 
-    optimizer, scheduler = select_optimizer(model, config['model'], None)
+
 
     log.info(f"Checkpoint Folder {cpkt_fol_name} ")
     log.info(f"{model}")

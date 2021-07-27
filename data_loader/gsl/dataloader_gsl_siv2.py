@@ -68,7 +68,7 @@ class GSL_SIv2(Base_dataset):
         cwd_path = config.cwd
 
         self.modality = self.config.dataset.modality
-        #self.type = self.config.dataset.type
+        self.type = self.config.dataset.type
         self.mode = mode
         self.dim = self.config.dataset.dim
         self.num_classes = len(classes)
@@ -107,8 +107,8 @@ class GSL_SIv2(Base_dataset):
 
         x, y, y_boundaries = self.load_video_sequence(path=self.list_IDs[index], label=self.list_glosses[index],
                                                       img_type='jpg')
-        # if self.type =='detection':
-        #     return x,y_boundaries
+        if self.type =='detection':
+            return x,y_boundaries
         return x, y
 
     def load_video_sequence(self, path, label,
@@ -222,8 +222,8 @@ class GSL_SIv2(Base_dataset):
 
         if (self.padding):
             X1 = pad_video(X1, padding_size=pad_len, padding_type='images')
-        if (len(images) < 25):
-            X1 = pad_video(X1, padding_size=25 - len(images), padding_type='images')
+        # if (len(images) < 25):
+        #     X1 = pad_video(X1, padding_size=25 - len(images), padding_type='images')
         # print(X1.shape)
         # import torchvision
         # import cv2
