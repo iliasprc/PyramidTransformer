@@ -12,6 +12,7 @@ from base.base_data_loader import Base_dataset
 from data_loader.loader_utils import multi_label_to_index, pad_video, video_transforms, sampling, \
     VideoRandomResizedCrop, \
     class2indextensor
+from data_loader.gsl_iso.dataloader_greek_isolated import read_classes_file
 
 
 def read_bounding_box(path):
@@ -59,8 +60,8 @@ def read_gsl_si_isolated(csv_path):
     val_glosses = []
     valpaths, val_labels = [], []
     classes = []
-    gloss_classes = ['blank']
-    id2w = {'blank':0}
+    gloss_classes = []
+    id2w = {'blank': 0}
     c = 0
     data = open(csv_path, 'r').read().splitlines()
     for item in data:
@@ -70,9 +71,10 @@ def read_gsl_si_isolated(csv_path):
         prot = prot.strip()
         gloss = gloss.strip()
         for g in gloss.split(' '):
+            g = g.strip()
             if g not in gloss_classes:
                 gloss_classes.append(g)
-                c+=1
+                c += 1
                 id2w[g] = c
         if prot not in classes:
             classes.append(prot)
@@ -85,14 +87,17 @@ def read_gsl_si_isolated(csv_path):
             val_glosses.append(gloss)
             val_labels.append(prot)
     classes = sorted(classes)
+    gloss_classes = sorted(gloss_classes)
+    gloss_classes.insert(0,'blank')
     # for i in classes:
     #      print(i)
-    w2id = {v: k for k, v in id2w.items()}
-    return trainpaths, train_labels, train_glosses,valpaths, val_labels, val_glosses,classes,gloss_classes,w2id
+    gloss_w2id = {v: k for k, v in id2w.items()}
+    return trainpaths, train_labels, train_glosses, valpaths, val_labels, val_glosses, classes, gloss_classes, \
+           gloss_w2id
 
 
 class GSL_SI(Base_dataset):
-    def __init__(self, config, mode, classes):
+    def __init__(self, config, mode):
         """
 
         Args:
@@ -101,32 +106,47 @@ class GSL_SI(Base_dataset):
             mode:
             classes:
         """
-        super(GSL_SI, self).__init__(config, mode, classes)
+        super(GSL_SI, self).__init__(config, mode, None)
 
         cwd_path = config.cwd
 
         self.modality = self.config.dataset.modality
         self.mode = mode
         self.dim = self.config.dataset.dim
-        self.num_classes = len(classes)
+
         self.seq_length = self.config.dataset[self.mode]['seq_length']
         self.normalize = self.config.dataset.normalize
-        self.padding = False#self.config.dataset.padding
+        self.padding = False  # self.config.dataset.padding
         self.augmentation = self.config.dataset[self.mode]['augmentation']
         self.return_context = False
 
-        trainpaths, train_labels, train_glosses, valpaths, val_labels, val_glosses, classes,gloss_classes,id2w= read_gsl_si_isolated(
-            os.path.join(config.cwd, 'data_loader/gsl/files/continuous_protaseis_glossesv2.csv'))
-        self.id2w = id2w
+        trainpaths, train_labels, train_glosses, valpaths, val_labels, val_glosses,sclasses, gloss_classes, \
+        gloss_w2id = read_gsl_si_isolated(
+            os.path.join(config.cwd, 'data_loader/gsl_iso/continuous_protaseis_glossesv2.csv'))
+
+        indices, classes, sentence_id2w = read_classes_file(
+            os.path.join(config.cwd, 'data_loader/gsl_iso/prot_classesv2.csv'))
+        print(len(classes),len(sclasses))
+        for i in range(len(sclasses)):
+            #print(sclasses[i],'-',classes[i])
+            sentence_chars = [c for c in sclasses[i]]
+            prot_classes_chars = [c for c in classes[i]]
+            assert len(sentence_chars) == len(prot_classes_chars),print(f'{sclasses[i]}|{classes[i]}' )
+            assert sclasses[i]==classes[i],print(f'{sclasses[i]}|{classes[i]}' )
+        self.sentence_id2w = sentence_id2w
+        self.gloss_to_index = gloss_w2id
         self.bbox = read_bounding_box(os.path.join(config.cwd, 'data_loader/gsl/files/bbox_for_gsl_continuous.txt'))
         self.classes = classes
+        self.num_classes = len(classes)
         self.gloss_classes = gloss_classes
-        print(f'NUMBER OF CLASSES PROT {len(self.classes)}   GLOSS   {len(gloss_classes)}' )
+        print(f'NUMBER OF CLASSES PROT {len(self.classes)}   GLOSS   {len(gloss_classes)}')
+        print(f'GLOSSES {gloss_classes}')
+        print(f'PROT {classes}')
         if self.mode == train_prefix:
-            self.list_IDs, self.list_sent,self.list_glosses = trainpaths, train_labels,train_glosses
+            self.list_IDs, self.list_sent, self.list_glosses = trainpaths, train_labels, train_glosses
 
         elif self.mode == val_prefix:
-            self.list_IDs, self.list_sent,self.list_glosses  = valpaths, val_labels,val_glosses
+            self.list_IDs, self.list_sent, self.list_glosses = valpaths, val_labels, val_glosses
 
         print(f"{len(self.list_IDs)} {self.mode} instances")
 
@@ -155,18 +175,19 @@ class GSL_SI(Base_dataset):
         return x, y
 
     def video_loader(self, index):
-
+        # print(self.list_IDs[index],self.list_sent[index],self.list_glosses[index])
         x = self.load_video_sequence(path=self.list_IDs[index],
                                      img_type='jpg')
         y = class2indextensor(classes=self.classes, target_label=self.list_sent[index])
         y_g = multi_label_to_index(classes=self.gloss_classes, target_labels=self.list_glosses[index])
-        return x,y, y_g
+        return x, (y, y_g)
 
     def load_video_sequence(self, path,
                             img_type='png'):
+
         if (self.augmentation):
             if random.uniform(0, 1) > 0.5:
-                path = path.replace('GSL_NEW','GSL_continuous')
+                path = path.replace('GSL_NEW', 'GSL_continuous')
         images = sorted(glob.glob(os.path.join(self.data_path, path, ) + '/*' + img_type))
 
         h_flip = False
@@ -193,16 +214,26 @@ class GSL_SI(Base_dataset):
             if (len(images) > self.seq_length):
                 images = sorted(sampling(images, self.seq_length))
 
-        i = np.random.randint(0, 30)
-        j = np.random.randint(0, 30)
         brightness = 1 + random.uniform(-0.2, +0.2)
         contrast = 1 + random.uniform(-0.2, +0.2)
-        hue = random.uniform(0, 1) / 10.0
+        hue = random.uniform(0, 1) / 5.0
         r_resize = ((256, 256))
-        crop_or_bbox = random.uniform(0, 1) > 0.5
+
         to_flip = random.uniform(0, 1) > 0.5
         grayscale = random.uniform(0, 1) > 0.9
         t1 = VideoRandomResizedCrop(self.dim[0], scale=(0.9, 1.0), ratio=(0.8, 1.2))
+
+        bbox_scalex = random.uniform(0, 1) * 0.5  # + 0.2
+        x1 = bbox['x1']
+        x2 = bbox['x2']
+        y1 = bbox['y1']
+        y2 = bbox['y2']
+        bbox_scaley = random.uniform(0, 1) * 0.5  # + 0.2
+        x1 = int(max(0, x1 - int(bbox_scalex * x1)))
+        x2 = int(min(648, x2 + int(bbox_scalex * x2)))
+        y1 = int(max(0, y1 - int(bbox_scaley * y1)))
+        y2 = int(min(480, y2 + int(bbox_scaley * y2)))
+
         for img_path in images:
 
             frame_o = Image.open(img_path)
@@ -215,18 +246,9 @@ class GSL_SI(Base_dataset):
             frame1 = np.array(frame_o)
             # print(frame1.shape)
             # print(bbox)
-
+            # print(bbox)
             if bbox != None:
-                bbox_scalex = random.uniform(0, 1) * 0.2
-                x1 = bbox['x1']
-                x2 = bbox['x2']
-                y1 = bbox['y1']
-                y2 = bbox['y2']
-                bbox_scaley = random.uniform(0, 1) * 0.2
-                x1 = int(max(0, x1 - int(bbox_scalex * x1)))
-                x2 = int(min(648, x2 + int(bbox_scalex * x2)))
-                y1 = int(max(0, y1 - int(bbox_scaley * y1)))
-                y2 = int(min(480, y2 + int(bbox_scaley * y2)))
+
                 # print('dfasdfdsf')
                 frame1 = frame1[y1:y2, x1:x2]
                 # cv2.imshow()

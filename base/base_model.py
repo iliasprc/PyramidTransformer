@@ -43,7 +43,7 @@ class BaseModel(nn.Module):
         """
         Loss calculation
         """
-        raise NotImplementedError
+        pass
 
     def __str__(self):
         """

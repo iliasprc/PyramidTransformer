@@ -36,11 +36,11 @@ trainer:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/papastrat/Desktop/ilias/datasets/
-    name: AUTSL_RGB_SK # dataset name
+    input_data: /home/iliask/Desktop/ilias/Epikoinono/datasets/
+    name: GSL_ISO_SI # dataset name
     modality: RGB # type of modality
     classes: 311 # number of classes
-    normalize: True # mean, std normalization
+    normalize: False # mean, std normalization
     padding : True # pad videos
     dim: [224,224] # frame dimension
     train:

@@ -6,29 +6,29 @@ trainer:
   cuda: True # use nvidia gpu
   gpu: 0 # id of gpu
   save: True # save checkpoint
-  load: False # load pretrained checkpoint
+  load: True # load pretrained checkpoint
   gradient_accumulation: 2 # gradient accumulation steps
-  pretrained_cpkt: /home/papastrat/Desktop/ilias/SLR_checkpoints/I3D/i3d_msasl_gsl_date_20_09_2020_20.23.07/bestgenerator.pth
+  pretrained_cpkt: /home/papastrat/PycharmProjects/SLVTP/checkpoints/model_ISL_cnn/dataset_GSL_ISO/date_25_10_2021_13.58.08/_model_epoch.pth
   log_interval: 1000 # print statistics every log_interval
   model:
-    name: ISL_cnn # model name SkeletonTR
+    name: GoogLeNet_TConvs # model name SkeletonTR
     optimizer: # optimizer configuration
-      type: SGD # optimizer type
-      lr: 1e-2 # learning rate
+      type: Adam # optimizer type
+      lr: 5e-5 # learning rate
       weight_decay: 0.000001 # weight decay
     scheduler: # learning rate scheduler
       type: ReduceLRonPlateau # type of scheduler
       scheduler_factor: 0.5 # learning rate change ratio
       scheduler_patience: 2 # patience for some epochs
-      scheduler_min_lr: 1e-3 # minimum learning rate value
+      scheduler_min_lr: 1e-5 # minimum learning rate value
       scheduler_verbose: 5e-6 # print if learning rate is changed
   dataloader:
     train:
-      batch_size: 8 # batch size
+      batch_size: 1 # batch size
       shuffle: True # shuffle samples after every epoch
-      num_workers: 2 # number of thread for dataloader1
+      num_workers: 3 # number of thread for dataloader1
     val:
-      batch_size: 8
+      batch_size: 1
       shuffle: False
       num_workers: 2
     test:
@@ -36,19 +36,19 @@ trainer:
       shuffle: False
       num_workers: 2
   dataset:
-    input_data: /home/iliask/Desktop/ilias/datasets/
-    name: GSL_ISO # dataset name
+    input_data: /home/papastrat/Desktop/ilias/datasets/
+    name: GSL_ISO_SI # dataset name
     modality: RGB # type of modality
     classes: 1 # number of classes
     normalize: True # mean, std normalization
     padding : True # pad videos
     dim: [224,224] # frame dimension
     train:
-      seq_length: 16 # number of frames for each video
+      seq_length: 250 # number of frames for each video
       augmentation: True # do augmentation to video
     val:
-      seq_length: 16
+      seq_length: 250
       augmentation: False
     test:
-      seq_length: 16
+      seq_length: 250
       augmentation: False

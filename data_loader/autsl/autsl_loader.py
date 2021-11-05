@@ -26,6 +26,7 @@ class AUTSL(Base_dataset):
         """
         super(AUTSL, self).__init__(config, mode, classes)
         #print(config)
+
         self.modality = self.config.dataset.modality
         self.mode = mode
         self.dim = self.config.dataset.dim
@@ -62,6 +63,7 @@ class AUTSL(Base_dataset):
 
         #print(f'Samples {len(self.list_IDs)} {self.mode} modality {self.modal}')
 
+        self.config.dataset.input_data = self.config.dataset.input_data
     def __len__(self):
         return len(self.list_IDs)
 
@@ -71,7 +73,7 @@ class AUTSL(Base_dataset):
             aug = True
 
             vid_name = f'{self.list_IDs[index]}_{self.modal}.mp4'
-            vid_tensor = load_video(os.path.join(self.config.dataset.input_data, 'train', vid_name),
+            vid_tensor = load_video(os.path.join(self.config.dataset.input_data,'challenge', 'train', vid_name),
                                     dim=self.dim,
                                     time_steps=self.seq_length, augmentation=aug)
             target_label = torch.LongTensor([int(self.labels[index])])
@@ -81,7 +83,7 @@ class AUTSL(Base_dataset):
             aug = False
             #print(self.list_IDs[index])
             vid_name = f'{self.list_IDs[index]}_{self.modal}.mp4'
-            vid_tensor = load_video(os.path.join(self.config.dataset.input_data, 'val', vid_name),
+            vid_tensor = load_video(os.path.join(self.config.dataset.input_data,'challenge', 'val', vid_name),
                                     dim=self.dim,
                                     time_steps=self.seq_length, augmentation=aug)
             target_label = torch.LongTensor([int(self.labels[index])])

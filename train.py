@@ -88,16 +88,16 @@ def main():
 
 
 
-
+    print(model)
 
     if (config.load):
         #model.replace_logits(2000)
-        #model.fc = torch.nn.Linear(256,250)
-        model.replace_logits(311)
+        model.fc = torch.nn.Linear(1024,311)
+        #model.replace_logits(311)
         pth_file, _ = load_checkpoint(config.pretrained_cpkt, model, strict=False, load_seperate_layers=False)
         #model.replace_logits(len(classes))
         #model.fc = torch.nn.Linear(1024,len(classes))
-        model.fc = torch.nn.Linear(256, len(classes))
+        model.fc = torch.nn.Linear(1024, 223)
 
     else:
         pth_file = None

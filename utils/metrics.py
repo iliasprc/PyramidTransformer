@@ -184,8 +184,8 @@ def wer_generic(ref, hyp, debug=False):
 
 
 def word_error_rate_generic(output, target, id2w):
-    probs = torch.nn.functional.softmax(output, dim=2)
-    pred = probs.argmax(dim=2, keepdim=True).squeeze(1).squeeze(1).detach().cpu().numpy()
+    probs = torch.nn.functional.softmax(output, dim=-1)
+    pred = probs.argmax(dim=-1, keepdim=True).squeeze(1).squeeze(1).detach().cpu().numpy()
     ref = ''
     refs = target.squeeze().cpu().numpy()
     if (target.size(1) == 1):

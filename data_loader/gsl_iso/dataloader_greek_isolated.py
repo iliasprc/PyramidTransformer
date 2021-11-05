@@ -14,7 +14,7 @@ import pathlib
 from base.base_data_loader import Base_dataset
 from data_loader.loader_utils import multi_label_to_index, pad_video, video_transforms, sampling, VideoRandomResizedCrop,class2indextensor
 
-root_path = 'Greek_isolated/GSL_isol/'
+root_path = 'GSL_ISO/GSL_isol/'
 train_prefix = "train"
 dev_prefix = "val"
 test_augmentation = 'augment'
@@ -61,7 +61,7 @@ class GSL_ISO(Base_dataset):
             print("{} {} instances  ".format(len(self.list_video_paths), mode))
             self.mode = 'train'
 
-        self.data_path = self.config.dataset.input_data + 'GSL_isolated/Greek_isolated'
+        self.data_path = self.config.dataset.input_data + 'GSL_ISO/GSL_isol'
 
     def __len__(self):
         return len(self.list_video_paths)
@@ -225,14 +225,14 @@ def read_classes_file(path):
     indices, classes = [], []
 
     data = open(path, 'r').read().splitlines()
-    count = 1
+    count = 0
     for d in data:
-        label = d
+        label = d.strip()
 
         indices.append(count)
         classes.append(label)
         count += 1
-
+    classes = sorted(classes)
     id2w = dict(zip(indices, classes))
 
     return indices, classes, id2w

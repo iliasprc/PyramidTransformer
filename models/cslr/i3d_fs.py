@@ -680,8 +680,8 @@ class InceptionI3d_Sentence(nn.Module):
         for k in self.end_points.keys():
             self.add_module(k, self.end_points[k])
 
-    def forward(self, x , y=None,y_g=None):
-
+    def forward(self, x , y=None):
+        y , y_g = y
 
         with torch.no_grad():
             for end_point in self.VALID_ENDPOINTS:

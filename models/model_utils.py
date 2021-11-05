@@ -50,7 +50,7 @@ def CSLR_video_encoder(config, N_classes):
     elif config.model.name == 'I3D':
         return SLR_I3D(num_classes=100)
     elif config.model.name =='GoogLeNet_TConvs':
-        return GoogLeNet_TConvs(N_classes=N_classes,mode='continuous')
+        return GoogLeNet_TConvs(config,N_classes=N_classes,mode='continuous')
     elif config.model.name == 'CSLR_I3D':
         return SLR_I3D(num_classes=N_classes)
     elif config.model.name == 'SkeletonTR':
@@ -75,10 +75,10 @@ def ISLR_video_encoder(config, N_classes):
         return ir_csn_152(pretraining="ig_ft_kinetics_32frms", pretrained=True, progress=False, num_classes=N_classes)
     elif config.model.name == 'I3D':
         return InceptionI3d_Sentence(num_classes=N_classes)
-    elif config.model.name =='GoogLeNet_TConvs':
-        return GoogLeNet_TConvs(N_classes=N_classes)
+    elif config.model.name == 'GoogLeNet_TConvs':
+        return GoogLeNet_TConvs(config, N_classes=N_classes, mode='continuous')
     elif config.model.name == 'ISL_cnn':
-        return ISL_cnn(N_classes=N_classes)
+        return ISL_cnn(mode='isolated',N_classes=N_classes)
     elif config.model.name == 'SkeletonTR':
         return SkeletonTR(N_classes = N_classes)
     elif config.model.name == 'STGCN':
@@ -174,14 +174,14 @@ def load_checkpoint(checkpoint, model, strict=True, optimizer=None, load_seperat
     print(checkpoint1.keys())
     pretrained_dict = checkpoint1['model_dict']
     model_dict = model.state_dict()
-    print(pretrained_dict.keys())
-    print(model_dict.keys())
+    print('pretrained',pretrained_dict.keys())
+    print('model',model_dict.keys())
     # # # 1. filter out unnecessary keys
     # # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
     pretrained_dictnew = {}
     for k, v in pretrained_dict.items():
-        if 'cnn.' in k:
-            k = k[4:]
+        # if 'cnn.' in k:
+        #     k = k[4:]
         pretrained_dictnew[k] = v
     # # # for k, v in pretrained_dict.items():
     # # #     k = k.strip('model.')

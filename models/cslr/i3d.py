@@ -506,56 +506,37 @@ class SLR_I3D(nn.Module):
         self.loss = CTCL()
     def forward(self, x,y=None):
         # print('dfsdfsdafgdsafdsgfsdg')
-        if (False ):# self.mode == 'isolated'):
-            c_outputs = []
-            # print(x.size())
-            # x = rearrange(x,'b t c h w -> ')
-            x = x.unfold(1, self.window, self.stride).squeeze(0)
-            print(x.shape)
-            x = rearrange(x, 'num c h w t -> num c t h w')
-            print(x.shape)
-            num, c, t, h, w = x.shape
-            for i in range(num):
-                clip = x[i].unsqueeze(0)
-                out = self.cnn(clip)
-                c_outputs.append(out)
 
-            c_out = torch.stack(c_outputs)
-            print(c_out.shape)
-            return c_out
-        else:
-            c_outputs = []
-            # print(x.size())
-            # x = rearrange(x,'b t c h w -> ')
-            #print(x.shape)
-            self.window_size = random.randint(12,18)
-            self.stride = random.randint(self.window_size//2 +1,self.window_size-1)
-            #x = x.unfold(2, self.window_size, self.stride).squeeze(0)
-            x = x.unfold(2, self.window, self.stride).squeeze(0)
-            #print(x.shape)
-            x = rearrange(x, 'c num h w t -> num c t h w')
-            #print(x.shape)
-            num, c, t, h, w = x.shape
-            for i in range(num):
-                clip = x[i].unsqueeze(0)
-                out = self.cnn.extract_features(clip)
-                c_outputs.append(out)
-
-            c_out = torch.stack(c_outputs).squeeze(-1).squeeze(-1).squeeze(-1)
+        c_outputs = []
         # print(x.size())
-        # print(c_out.shape)
-            #print(c_out.shape)
-            r_out, (h_n, h_c) = self.rnn(c_out)
-            # print(r_out.shape)
-            r_out = rearrange(r_out, 'num b c -> b c num')
-            x = self.cnn.logits(r_out)
-            # print('logits dfdsafs',x.size(), rearrange(x.squeeze(-1).squeeze(-1),'b classes t -> t b classes').shape)
-            y_hat= rearrange(x.squeeze(-1).squeeze(-1), 'b classes t -> t b classes')
+        # x = rearrange(x,'b t c h w -> ')
+        #print(x.shape)
+        self.window_size = random.randint(12,18)
+        self.stride = random.randint(self.window_size//2 +1,self.window_size-1)
+        #x = x.unfold(2, self.window_size, self.stride).squeeze(0)
+        x = x.unfold(2, self.window, self.stride).squeeze(0)
+        #print(x.shape)
+        x = rearrange(x, 'c num h w t -> num c t h w')
+        #print(x.shape)
+        num, c, t, h, w = x.shape
+        for i in range(num):
+            clip = x[i].unsqueeze(0)
+            out = self.cnn.extract_features(clip)
+            c_outputs.append(out)
 
-            if y != None:
-                loss_ctc = self.loss(y_hat, y)
-                return y_hat, loss_ctc
-            return y_hat
+        c_out = torch.stack(c_outputs).squeeze(-1).squeeze(-1).squeeze(-1)
+
+        r_out, (h_n, h_c) = self.rnn(c_out)
+        # print(r_out.shape)
+        r_out = rearrange(r_out, 'num b c -> b c num')
+        x = self.cnn.logits(r_out)
+        # print('logits dfdsafs',x.size(), rearrange(x.squeeze(-1).squeeze(-1),'b classes t -> t b classes').shape)
+        y_hat= rearrange(x.squeeze(-1).squeeze(-1), 'b classes t -> t b classes')
+
+        if y != None:
+            loss_ctc = self.loss(y_hat, y)
+            return y_hat, loss_ctc
+        return y_hat
 
     def forward1(self, x,y=None):
 
